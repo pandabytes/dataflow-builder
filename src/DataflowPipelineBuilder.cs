@@ -4,12 +4,15 @@ public class DataflowPipelineBuilder
 {
   private readonly IList<IDataflowBlock> _blocks;
 
+  private bool _pipelineBuilt;
+
   private bool _lastBlockAdded;
 
   public DataflowPipelineBuilder()
   {
     _blocks = new List<IDataflowBlock>();
     _lastBlockAdded = false;
+    _pipelineBuilt = false;
   }
 
   internal IntermediateAddBlock<TOut> AddBlock<TIn, TOut>(Func<TIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null, DataflowLinkOptions? linkOptions = null)
@@ -54,6 +57,23 @@ public class DataflowPipelineBuilder
 
   public Pipeline<TIn> Build<TIn>()
   {
+    ValidateBeforeBuild<TIn>();
+
+    var firstBlock = _blocks.First() as ITargetBlock<TIn>
+      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TIn).FullName}.");
+    IEnumerable<IDataflowBlock> lastBlocks = [_blocks.Last()];
+
+    _pipelineBuilt = true;
+    return new(firstBlock, lastBlocks);
+  }
+
+  private void ValidateBeforeBuild<TIn>()
+  {
+    if (_pipelineBuilt)
+    {
+      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(DataflowPipelineBuilder)} to build a new pipeline.");
+    }
+
     if (_blocks.Count == 0)
     {
       throw new InvalidOperationException("Pipeline does not have any block defined.");
@@ -64,11 +84,5 @@ public class DataflowPipelineBuilder
       throw new InvalidOperationException($"Must call {nameof(IntermediateAddBlock<TIn>.AddLastBlock)} " +
                                           "to indicate pipeline is ready to be built.");
     }
-
-    var firstBlock = _blocks.First() as ITargetBlock<TIn>
-      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TIn).FullName}.");
-    IEnumerable<IDataflowBlock> lastBlocks = [_blocks.Last()];
-
-    return new(firstBlock, lastBlocks);
   }
 }

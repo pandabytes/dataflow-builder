@@ -6,22 +6,37 @@ public class Pipeline<TIn>
 
   private readonly IEnumerable<IDataflowBlock> _lastBlocks;
 
+  private bool _pipelineRan;
+
   internal Pipeline(ITargetBlock<TIn> firstBlock, IEnumerable<IDataflowBlock> lastBlocks)
   {
     _firstBlock = firstBlock;
     _lastBlocks = lastBlocks;
+    _pipelineRan = false;
   }
 
   public async Task ExecuteAsync(IEnumerable<TIn> inputs, CancellationToken cancellationToken = default)
   {
-    foreach (var input in inputs)
+    if (_pipelineRan)
     {
-      await _firstBlock.SendAsync(input, cancellationToken).NoState();
+      throw new InvalidOperationException("Pipeline already ran. Cannot rerun it.");
     }
 
-    _firstBlock.Complete();
+    try
+    {
+      foreach (var input in inputs)
+      {
+        await _firstBlock.SendAsync(input, cancellationToken).NoState();
+      }
 
-    var completionTasks = _lastBlocks.Select(block => block.Completion);
-    await Task.WhenAll(completionTasks).NoState();
+      _firstBlock.Complete();
+
+      var completionTasks = _lastBlocks.Select(block => block.Completion);
+      await Task.WhenAll(completionTasks).NoState();
+    }
+    finally
+    {
+      _pipelineRan = true;
+    }
   }
 }
