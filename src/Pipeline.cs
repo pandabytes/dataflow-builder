@@ -6,37 +6,52 @@ public class Pipeline<TIn>
 
   private readonly IEnumerable<IDataflowBlock> _lastBlocks;
 
-  private bool _pipelineRan;
+  private bool _pipelineRanOrRunning;
 
   internal Pipeline(ITargetBlock<TIn> firstBlock, IEnumerable<IDataflowBlock> lastBlocks)
   {
     _firstBlock = firstBlock;
     _lastBlocks = lastBlocks;
-    _pipelineRan = false;
+    _pipelineRanOrRunning = false;
   }
 
   public async Task ExecuteAsync(IEnumerable<TIn> inputs, CancellationToken cancellationToken = default)
   {
-    if (_pipelineRan)
+    if (_pipelineRanOrRunning)
     {
-      throw new InvalidOperationException("Pipeline already ran. Cannot rerun it.");
+      throw new InvalidOperationException("Pipeline is running or already ran.");
     }
 
-    try
-    {
-      foreach (var input in inputs)
-      {
-        await _firstBlock.SendAsync(input, cancellationToken).NoState();
-      }
+    _pipelineRanOrRunning = true;
 
-      _firstBlock.Complete();
-
-      var completionTasks = _lastBlocks.Select(block => block.Completion);
-      await Task.WhenAll(completionTasks).NoState();
-    }
-    finally
+    foreach (var input in inputs)
     {
-      _pipelineRan = true;
+      await _firstBlock.SendAsync(input, cancellationToken).NoState();
     }
+
+    _firstBlock.Complete();
+
+    var completionTasks = _lastBlocks.Select(block => block.Completion);
+    await Task.WhenAll(completionTasks).NoState();
+  }
+
+  public async Task ExecuteAsync(IAsyncEnumerable<TIn> inputs, CancellationToken cancellationToken = default)
+  {
+    if (_pipelineRanOrRunning)
+    {
+      throw new InvalidOperationException("Pipeline is running or already ran.");
+    }
+
+    _pipelineRanOrRunning = true;
+
+    await foreach (var input in inputs)
+    {
+      await _firstBlock.SendAsync(input, cancellationToken).NoState();
+    }
+
+    _firstBlock.Complete();
+
+    var completionTasks = _lastBlocks.Select(block => block.Completion);
+    await Task.WhenAll(completionTasks).NoState();
   }
 }
