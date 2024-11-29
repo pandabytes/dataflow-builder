@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PipelineBuilder", "src\PipelineBuilder.csproj", "{B1010C6B-ACFC-4965-95D2-3701C3DCC341}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataflowBuilder", "src\DataflowBuilder.csproj", "{B1010C6B-ACFC-4965-95D2-3701C3DCC341}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{1A4F8359-D396-4B4D-858C-A57499852DAA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PipelineBuilder.Samples", "samples\PipelineBuilder.Samples\PipelineBuilder.Samples.csproj", "{F027E08B-B0A9-44E7-BC9B-DA9E59615216}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataflowBuilder.Samples", "samples\DataflowBuilder.Samples\DataflowBuilder.Samples.csproj", "{F027E08B-B0A9-44E7-BC9B-DA9E59615216}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks.Dataflow;
 
 var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
-var pipelineBuilder = new DataflowPipelineBuilder();
+var pipelineBuilder = new PipelineBuilder();
 pipelineBuilder
   // ******* Begin with async
   // .AddFirstAsyncBlock<string, int>(async str =>

@@ -9,9 +9,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/samples/PipelineBuilder.Samples/bin/Debug/net8.0/PipelineBuilder.Samples.dll",
+      "program": "${workspaceFolder}/samples/DataflowBuilder.Samples/bin/Debug/net8.0/DataflowBuilder.Samples.dll",
       "args": [],
-      "cwd": "${workspaceFolder}/samples/PipelineBuilder.Samples",
+      "cwd": "${workspaceFolder}/samples/DataflowBuilder.Samples",
       "console": "internalConsole",
       "stopAtEntry": false
     },

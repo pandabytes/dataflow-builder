@@ -1,10 +1,10 @@
-﻿namespace PipelineBuilder;
+﻿namespace DataflowBuilder;
 
 public class IntermediateAddBlock<TIn>
 {
-  protected DataflowPipelineBuilder Builder { get; }
+  protected PipelineBuilder Builder { get; }
 
-  internal IntermediateAddBlock(DataflowPipelineBuilder pipelineBuilder)
+  internal IntermediateAddBlock(PipelineBuilder pipelineBuilder)
   {
     Builder = pipelineBuilder;
   }

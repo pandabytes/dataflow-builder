@@ -1,6 +1,6 @@
-namespace PipelineBuilder;
+namespace DataflowBuilder;
 
-public class DataflowPipelineBuilder
+public class PipelineBuilder
 {
   private class PipelineBlock
   {
@@ -15,7 +15,7 @@ public class DataflowPipelineBuilder
 
   private bool _lastBlockAdded;
 
-  public DataflowPipelineBuilder()
+  public PipelineBuilder()
   {
     _blocks = new List<PipelineBlock>();
     _lastBlockAdded = false;
@@ -97,7 +97,7 @@ public class DataflowPipelineBuilder
 
     if (lastBlock.IsBlockAsync)
     {
-      var newTransformBlock = new TransformBlock<Task<TIn>, Task<TOut>>(async input => func(await input), blockOptions ?? new());
+      var newTransformBlock = new TransformBlock<Task<TIn>, Task<TOut>>(async inputTask => func(await inputTask), blockOptions ?? new());
       var lastTargetBlock = _blocks.Last().Value as ISourceBlock<Task<TIn>>
         ?? throw new ArgumentException($"Cannot link block to the last async block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
@@ -113,7 +113,7 @@ public class DataflowPipelineBuilder
       lastTargetBlock.LinkTo(newTransformBlock, linkOptions ?? new());
       newBlock = newTransformBlock;
     }
-
+ 
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     return new(this);
   }
@@ -190,7 +190,7 @@ public class DataflowPipelineBuilder
   {
     if (_pipelineBuilt)
     {
-      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(DataflowPipelineBuilder)} to build a new pipeline.");
+      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(PipelineBuilder)} to build a new pipeline.");
     }
 
     if (_blocks.Count == 0)

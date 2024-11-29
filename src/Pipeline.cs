@@ -1,4 +1,4 @@
-namespace PipelineBuilder;
+namespace DataflowBuilder;
 
 public class Pipeline<TIn>
 {

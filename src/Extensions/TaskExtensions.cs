@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace PipelineBuilder.Extensions;
+namespace DataflowBuilder.Extensions;
 
 internal static class TaskExtensions
 {
