@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks.Dataflow;
 
-var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
+// var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
+var pipelineBlockOpts = new PipelineBlockOptions { LinkOptions = new() { PropagateCompletion = true } };
 var pipelineBuilder = new PipelineBuilder();
 pipelineBuilder
   // ******* Begin with async
@@ -17,30 +18,30 @@ pipelineBuilder
   // .AddBlock(number => number*2, linkOptions: linkOpts)
   // ******* Begin with sync
   .AddFirstBlock<string, int>(int.Parse)
-  .AddBlock(number => number*number, linkOptions: linkOpts)
-  .AddBlock(number => number.ToString(), linkOptions: linkOpts)
+  .AddBlock(number => number*number, pipelineBlockOpts)
+  .AddBlock(number => number.ToString(), pipelineBlockOpts)
   .AddAsyncBlock(async str =>
   {
     await Task.Delay(1).ConfigureAwait(false);
     return $"[{str}]";
-  }, linkOptions: linkOpts)
+  }, pipelineBlockOpts)
   .AddAsyncBlock(async str =>
   {
     await Task.Delay(1).ConfigureAwait(false);
     return $"[{str}]";
-  }, linkOptions: linkOpts)
-  .AddBlock(str => $"*{str}*", linkOptions: linkOpts)
+  }, pipelineBlockOpts)
+  .AddBlock(str => $"*{str}*", pipelineBlockOpts)
   .AddBlock(str =>
   {
     Thread.Sleep(1);
     return $"[{str}]";
-  }, linkOptions: linkOpts)
+  }, pipelineBlockOpts)
   // .AddLastBlock(Console.WriteLine, linkOptions: linkOpts)
   .AddLastAsyncBlock(async str =>
   {
     await Task.Delay(1000);
     Console.WriteLine(str);
-  }, linkOptions: linkOpts)
+  }, pipelineBlockOpts)
   ;
 
 var p = pipelineBuilder.Build<string>();

@@ -9,25 +9,25 @@ public class IntermediateAddBlock<TIn>
     Builder = pipelineBuilder;
   }
 
-  public IntermediateAddBlock<TOut> AddBlock<TOut>(Func<TIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null, DataflowLinkOptions? linkOptions = null)
+  public IntermediateAddBlock<TOut> AddBlock<TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
-    Builder.AddBlock(func, blockOptions, linkOptions);
+    Builder.AddBlock(func, pipelineBlockOptions);
     return new(Builder);
   }
 
-  public IntermediateAddBlock<TOut> AddAsyncBlock<TOut>(Func<TIn, Task<TOut>> func, ExecutionDataflowBlockOptions? blockOptions = null, DataflowLinkOptions? linkOptions = null)
+  public IntermediateAddBlock<TOut> AddAsyncBlock<TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
-    Builder.AddAsyncBlock(func, blockOptions, linkOptions);
+    Builder.AddAsyncBlock(func, pipelineBlockOptions);
     return new(Builder);
   }
 
-  public void AddLastBlock(Action<TIn> action, ExecutionDataflowBlockOptions? blockOptions = null, DataflowLinkOptions? linkOptions = null)
+  public void AddLastBlock(Action<TIn> action, PipelineBlockOptions? pipelineBlockOptions = null)
   {
-    Builder.AddLastBlock(action, blockOptions, linkOptions);
+    Builder.AddLastBlock(action, pipelineBlockOptions);
   }
 
-  public void AddLastAsyncBlock(Func<TIn, Task> func, ExecutionDataflowBlockOptions? blockOptions = null, DataflowLinkOptions? linkOptions = null)
+  public void AddLastAsyncBlock(Func<TIn, Task> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
-    Builder.AddLastAsyncBlock(func, blockOptions, linkOptions);
+    Builder.AddLastAsyncBlock(func, pipelineBlockOptions);
   }
 }
