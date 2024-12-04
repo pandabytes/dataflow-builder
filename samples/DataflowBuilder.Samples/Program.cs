@@ -1,8 +1,7 @@
-﻿using System.Threading.Tasks.Dataflow;
-
+﻿
 // var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
 var pipelineBlockOpts = new PipelineBlockOptions { LinkOptions = new() { PropagateCompletion = true } };
-var pipelineBuilder = new PipelineBuilder();
+var pipelineBuilder = new PipelineBuilder<string>();
 pipelineBuilder
   // ******* Begin with async
   // .AddFirstAsyncBlock<string, int>(async str =>
@@ -17,7 +16,7 @@ pipelineBuilder
   // }, linkOptions: linkOpts)
   // .AddBlock(number => number*2, linkOptions: linkOpts)
   // ******* Begin with sync
-  .AddFirstBlock<string, int>(int.Parse)
+  .AddFirstBlock(int.Parse)
   .AddBlock(number => number*number, pipelineBlockOpts)
   .AddBlock(number => number.ToString(), pipelineBlockOpts)
   .AddAsyncBlock(async str =>
@@ -44,5 +43,5 @@ pipelineBuilder
   }, pipelineBlockOpts)
   ;
 
-var p = pipelineBuilder.Build<string>();
+var p = pipelineBuilder.Build();
 await p.ExecuteAsync(["1", "3", "5"]);

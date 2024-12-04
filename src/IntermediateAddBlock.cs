@@ -1,21 +1,21 @@
 ﻿namespace DataflowBuilder;
 
-public class IntermediateAddBlock<TIn>
+public class IntermediateAddBlock<TInitialIn, TIn>
 {
-  protected PipelineBuilder Builder { get; }
+  protected PipelineBuilder<TInitialIn> Builder { get; }
 
-  internal IntermediateAddBlock(PipelineBuilder pipelineBuilder)
+  internal IntermediateAddBlock(PipelineBuilder<TInitialIn> pipelineBuilder)
   {
     Builder = pipelineBuilder;
   }
 
-  public IntermediateAddBlock<TOut> AddBlock<TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  public IntermediateAddBlock<TInitialIn, TOut> AddBlock<TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Builder.AddBlock(func, pipelineBlockOptions);
     return new(Builder);
   }
 
-  public IntermediateAddBlock<TOut> AddAsyncBlock<TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  public IntermediateAddBlock<TInitialIn, TOut> AddAsyncBlock<TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Builder.AddAsyncBlock(func, pipelineBlockOptions);
     return new(Builder);

@@ -1,6 +1,6 @@
 namespace DataflowBuilder;
 
-public class PipelineBuilder
+public class PipelineBuilder<TInitialIn>
 {
   private class PipelineBlock
   {
@@ -22,7 +22,7 @@ public class PipelineBuilder
     _pipelineBuilt = false;
   }
 
-  public IntermediateAddBlock<TOut> AddFirstBlock<TIn, TOut>(Func<TIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null)
+  public IntermediateAddBlock<TInitialIn, TOut> AddFirstBlock<TOut>(Func<TInitialIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null)
   {
     if (_blocks.Count > 0)
     {
@@ -31,31 +31,31 @@ public class PipelineBuilder
 
     if (IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TIn>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
-    var newBlock = new TransformBlock<TIn, TOut>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TInitialIn, TOut>(func, blockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     return new(this);
   }
 
-  public IntermediateAddBlock<TOut> AddFirstAsyncBlock<TIn, TOut>(Func<TIn, Task<TOut>> func, ExecutionDataflowBlockOptions? blockOptions = null)
+  public IntermediateAddBlock<TInitialIn, TOut> AddFirstAsyncBlock<TOut>(Func<TInitialIn, Task<TOut>> func, ExecutionDataflowBlockOptions? blockOptions = null)
   {
     if (_blocks.Count > 0)
     {
       throw new InvalidOperationException("Pipeline must be empty when adding the first block.");
     }
 
-    var newBlock = new TransformBlock<TIn, Task<TOut>>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TInitialIn, Task<TOut>>(func, blockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     return new(this);
   }
 
-  internal IntermediateAddBlock<TOut> AddBlock<TIn, TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  internal IntermediateAddBlock<TInitialIn, TOut> AddBlock<TIn, TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     if (IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TIn>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
     if (_blocks.Count == 0)
@@ -87,7 +87,7 @@ public class PipelineBuilder
     return new(this);
   }
 
-  internal IntermediateAddBlock<TOut> AddAsyncBlock<TIn, TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  internal IntermediateAddBlock<TInitialIn, TOut> AddAsyncBlock<TIn, TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     if (_blocks.Count == 0)
     {
@@ -182,23 +182,23 @@ public class PipelineBuilder
     _lastBlockAdded = true;
   }
 
-  public Pipeline<TIn> Build<TIn>()
+  public Pipeline<TInitialIn> Build()
   {
-    ValidateBeforeBuild<TIn>();
+    ValidateBeforeBuild();
 
-    var firstBlock = _blocks.First().Value as ITargetBlock<TIn>
-      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TIn).FullName}.");
+    var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
+      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
     IEnumerable<IDataflowBlock> lastBlocks = [_blocks.Last().Value];
 
     _pipelineBuilt = true;
     return new(firstBlock, lastBlocks);
   }
 
-  private void ValidateBeforeBuild<TIn>()
+  private void ValidateBeforeBuild()
   {
     if (_pipelineBuilt)
     {
-      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(PipelineBuilder)} to build a new pipeline.");
+      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(PipelineBuilder<TInitialIn>)} to build a new pipeline.");
     }
 
     if (_blocks.Count == 0)
@@ -208,7 +208,7 @@ public class PipelineBuilder
 
     if (!_lastBlockAdded)
     {
-      throw new InvalidOperationException($"Must call {nameof(IntermediateAddBlock<TIn>.AddLastBlock)} " +
+      throw new InvalidOperationException($"Must call {nameof(IntermediateAddBlock<TInitialIn, object>.AddLastBlock)} " +
                                           "to indicate pipeline is ready to be built.");
     }
   }
