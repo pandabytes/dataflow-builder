@@ -1,10 +1,10 @@
 namespace DataflowBuilder;
 
-internal interface IPipelineBuilder
+internal interface IPipeline
 {
   PipelineBlock FirstBlock { get; }
 
   PipelineBlock LastBlock { get; }
 
-  IList<IPipelineBuilder> BranchPipelineBuilders { get; }
+  IList<IPipeline> BranchPipelines { get; }
 }

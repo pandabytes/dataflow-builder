@@ -1,14 +1,14 @@
 ﻿
 // var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
 var pipelineBlockOpts = new PipelineBlockOptions { LinkOptions = new() { PropagateCompletion = true } };
-var pipelineBuilder = new PipelineBuilder<string>();
+var pipelineBuilder = new Pipeline<string>();
 
-var sub1 = new PipelineBuilder<int>();
+var sub1 = new Pipeline<int>();
   sub1
     .AddFirstBlock(number => number)
     .AddLastBlock(Console.WriteLine, pipelineBlockOpts);
 
-var sub2 = new PipelineBuilder<int>();
+var sub2 = new Pipeline<int>();
   sub2
     .AddFirstBlock(number => number)
     .AddLastBlock(Console.WriteLine, pipelineBlockOpts);
@@ -70,31 +70,31 @@ static async Task FooAsync()
     LinkOptions = new() { PropagateCompletion = true }
   };
 
-  var sub1 = new PipelineBuilder<int>();
-    sub1
+  var branch1 = new Pipeline<int>();
+    branch1
       .AddFirstBlock(number => number)
       .AddLastBlock(n => Console.WriteLine($"Divisible by 2 {n}"), pipelineBlockOpts);
 
-  var sub2 = new PipelineBuilder<int>();
-    sub2
+  var branch2 = new Pipeline<int>();
+    branch2
       .AddFirstBlock(number => number)
       .AddLastBlock(n => Console.WriteLine($"Divisible by 5 {n}"), pipelineBlockOpts);
 
-  var sub3 = new PipelineBuilder<int>();
-    sub3
+  var branch3 = new Pipeline<int>();
+    branch3
       .AddFirstBlock(number => number)
       .AddLastBlock(n => Console.WriteLine($"ALL {n}"), pipelineBlockOpts);
 
-  var pipelineBuilder = new PipelineBuilder<string>();
-  pipelineBuilder
+  var pipeline = new Pipeline<string>();
+  pipeline
     .AddFirstBlock(int.Parse)
     .AddBlock(number => number*number, pipelineBlockOpts)
     .Fork()
-      .Branch(n => n % 2 == 0, sub1, pipelineBlockOpts.LinkOptions)
-      .Branch(n => n % 5 == 0, sub2, pipelineBlockOpts.LinkOptions)
-      .Default(sub3, pipelineBlockOpts.LinkOptions);
+      .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
+      .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
+      .Default(branch3, pipelineBlockOpts.LinkOptions);
     ;
 
-  var p = pipelineBuilder.Build();
-  await p.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
+  var pipelineRunner = pipeline.Build();
+  await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
 }
