@@ -1,28 +1,30 @@
 namespace DataflowBuilder;
 
-public class PipelineBuilder<TInitialIn>
+public sealed class PipelineBuilder<TInitialIn> : IPipelineBuilder
 {
-  private class PipelineBlock
-  {
-    public required IDataflowBlock Value { get; init; }
-
-    public required bool IsBlockAsync { get; init; }
-  }
-
   private readonly IList<PipelineBlock> _blocks;
 
   private bool _pipelineBuilt;
 
   private bool _lastBlockAdded;
 
+  private readonly IList<IPipelineBuilder> _branchPipelineBuilders;
+
+  PipelineBlock IPipelineBuilder.FirstBlock => _blocks.First();
+
+  PipelineBlock IPipelineBuilder.LastBlock => _blocks.Last();
+
+  IList<IPipelineBuilder> IPipelineBuilder.BranchPipelineBuilders => _branchPipelineBuilders;
+
   public PipelineBuilder()
   {
     _blocks = new List<PipelineBlock>();
+    _branchPipelineBuilders = new List<IPipelineBuilder>();
     _lastBlockAdded = false;
     _pipelineBuilt = false;
   }
 
-  public IntermediateAddBlock<TInitialIn, TOut> AddFirstBlock<TOut>(Func<TInitialIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null)
+  public IntermediateBuilingBlock<TInitialIn, TOut> AddFirstBlock<TOut>(Func<TInitialIn, TOut> func, ExecutionDataflowBlockOptions? blockOptions = null)
   {
     if (_blocks.Count > 0)
     {
@@ -31,7 +33,7 @@ public class PipelineBuilder<TInitialIn>
 
     if (IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuilingBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
     var newBlock = new TransformBlock<TInitialIn, TOut>(func, blockOptions ?? new());
@@ -39,7 +41,7 @@ public class PipelineBuilder<TInitialIn>
     return new(this);
   }
 
-  public IntermediateAddBlock<TInitialIn, TOut> AddFirstAsyncBlock<TOut>(Func<TInitialIn, Task<TOut>> func, ExecutionDataflowBlockOptions? blockOptions = null)
+  public IntermediateBuilingBlock<TInitialIn, TOut> AddFirstAsyncBlock<TOut>(Func<TInitialIn, Task<TOut>> func, ExecutionDataflowBlockOptions? blockOptions = null)
   {
     if (_blocks.Count > 0)
     {
@@ -51,11 +53,11 @@ public class PipelineBuilder<TInitialIn>
     return new(this);
   }
 
-  internal IntermediateAddBlock<TInitialIn, TOut> AddBlock<TIn, TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  internal IntermediateBuilingBlock<TInitialIn, TOut> AddBlock<TIn, TOut>(Func<TIn, TOut> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     if (IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateAddBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuilingBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
     if (_blocks.Count == 0)
@@ -87,7 +89,7 @@ public class PipelineBuilder<TInitialIn>
     return new(this);
   }
 
-  internal IntermediateAddBlock<TInitialIn, TOut> AddAsyncBlock<TIn, TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
+  internal IntermediateBuilingBlock<TInitialIn, TOut> AddAsyncBlock<TIn, TOut>(Func<TIn, Task<TOut>> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     if (_blocks.Count == 0)
     {
@@ -182,16 +184,60 @@ public class PipelineBuilder<TInitialIn>
     _lastBlockAdded = true;
   }
 
+  internal void Fork()
+  {
+    _lastBlockAdded = true;
+  }
+
+  internal void Branch<TIn>(Predicate<TIn> predicate, PipelineBuilder<TIn> branchPipelineBuilder, DataflowLinkOptions? linkOptions = null)
+  {
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
+    }
+
+    // TODO: handle async
+    var lastBlock = _blocks.Last().Value;
+    var firstBlockSubPipeline = branchPipelineBuilder._blocks.First().Value as ITargetBlock<TIn>
+      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+    
+    var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
+      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+
+    lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new(), predicate);
+    ((IPipelineBuilder)this).BranchPipelineBuilders.Add(branchPipelineBuilder);
+  }
+
+  internal void Default<TIn>(PipelineBuilder<TIn> branchPipelineBuilder, DataflowLinkOptions? linkOptions = null)
+  {
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
+    }
+
+    // TODO: handle async
+    var lastBlock = _blocks.Last().Value;
+    var firstBlockSubPipeline = branchPipelineBuilder._blocks.First().Value as ITargetBlock<TIn>
+      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+    
+    var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
+      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+
+    lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new());
+    ((IPipelineBuilder)this).BranchPipelineBuilders.Add(branchPipelineBuilder);
+  }
+
   public Pipeline<TInitialIn> Build()
   {
     ValidateBeforeBuild();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
-    IEnumerable<IDataflowBlock> lastBlocks = [_blocks.Last().Value];
+
+    var leafBlocks = GetLeafBlocks();
 
     _pipelineBuilt = true;
-    return new(firstBlock, lastBlocks);
+    return new(firstBlock, leafBlocks.Select(block => block.Value));
   }
 
   private void ValidateBeforeBuild()
@@ -208,8 +254,29 @@ public class PipelineBuilder<TInitialIn>
 
     if (!_lastBlockAdded)
     {
-      throw new InvalidOperationException($"Must call {nameof(IntermediateAddBlock<TInitialIn, object>.AddLastBlock)} " +
+      throw new InvalidOperationException($"Must call {nameof(IntermediateBuilingBlock<TInitialIn, object>.AddLastBlock)} " +
                                           "to indicate pipeline is ready to be built.");
+    }
+  }
+
+  private IList<PipelineBlock> GetLeafBlocks()
+  {
+    var leafBlocks = new List<PipelineBlock>();
+    FindLeaftBlocksRecursively(this, leafBlocks);
+    return leafBlocks;
+
+    static void FindLeaftBlocksRecursively(IPipelineBuilder currentPipelineBuilder, IList<PipelineBlock> leafBlocks)
+    {
+      if (!currentPipelineBuilder.BranchPipelineBuilders.Any())
+      {
+        leafBlocks.Add(currentPipelineBuilder.LastBlock);
+        return;
+      }
+
+      foreach (var pipelineBuilder in currentPipelineBuilder.BranchPipelineBuilders)
+      {
+        FindLeaftBlocksRecursively(pipelineBuilder, leafBlocks);
+      }
     }
   }
 
