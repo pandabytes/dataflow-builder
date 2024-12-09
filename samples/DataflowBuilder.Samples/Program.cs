@@ -88,14 +88,15 @@ static async Task FooAsync()
   var pipeline = new Pipeline<string>("root");
   pipeline
     .AddFirstBlock(int.Parse)
-    // .AddAsyncBlock(async n =>
-    // {
-    //   // Thread.Sleep(500);
-    //   await Task.Delay(500);
-    //   return n;
-    // }, pipelineBlockOpts)
-    .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
+    .AddAsyncBlock(async n =>
+    {
+      // Thread.Sleep(500);
+      await Task.Delay(100);
+      return n;
+    }, pipelineBlockOpts)
+    // .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
     // .AddBlock(async number => number*number, pipelineBlockOpts, true)
+    .AddBlock(number => number*number, pipelineBlockOpts)
     // .AddLastAsyncBlock(async n => {}, pipelineBlockOpts)
     // .AddLastBlock(n => { Console.WriteLine(n.Result); }, pipelineBlockOpts)
     .Fork()

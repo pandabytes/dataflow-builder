@@ -4,9 +4,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 {
   private readonly IList<PipelineBlock> _blocks;
 
-  private bool _pipelineBuilt;
-
-  private bool _lastBlockAdded;
+  private PipelineBuildStatus _buildStatus;
 
   private readonly IList<IPipeline> _branchPipelines;
 
@@ -18,22 +16,26 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   void IPipeline.BeforeBuild()
   {
-    if (_pipelineBuilt)
-    {
-      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
-    }
-
     if (_blocks.Count == 0)
     {
       throw new InvalidOperationException("Pipeline does not have any block defined.");
     }
 
-    if (!_lastBlockAdded)
+    switch (_buildStatus)
     {
-      throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
-                                          "to indicate pipeline is ready to be built.");
+      case PipelineBuildStatus.Built:
+        throw new InvalidOperationException($"Pipeline already built. Please create a new {nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
+      case PipelineBuildStatus.Progress:
+        throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
+                                            "to indicate pipeline is ready to be built.");
+      case PipelineBuildStatus.Forked:
+        if ((this as IPipeline).BranchPipelines.Count == 0)
+        {
+          throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
+        }
+        break;
     }
-  
+
     foreach (var branchPipeline in (this as IPipeline).BranchPipelines)
     {
       try
@@ -59,8 +61,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     Id = id;
     _blocks = new List<PipelineBlock>();
     _branchPipelines = new List<IPipeline>();
-    _lastBlockAdded = false;
-    _pipelineBuilt = false;
+    _buildStatus = PipelineBuildStatus.Progress;
   }
 
   public IntermediateBuildingBlock<TInitialIn, TOut> AddFirstBlock<TOut>(
@@ -206,7 +207,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     }       
 
-    _lastBlockAdded = true;
+    _buildStatus = PipelineBuildStatus.ReadyForBuild;
   }
 
   internal void AddLastAsyncBlock<TIn>(
@@ -239,13 +240,10 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     }       
 
-    _lastBlockAdded = true;
+    _buildStatus = PipelineBuildStatus.ReadyForBuild;
   }
 
-  internal void Fork()
-  {
-    _lastBlockAdded = true;
-  }
+  internal void Fork() => _buildStatus = PipelineBuildStatus.Forked;
 
   internal void BranchOrDefault<TIn>(
     Pipeline<TIn> branchPipeline,
@@ -306,7 +304,8 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
 
     var lastBlocks = GetLastBlocks().Select(block => block.Value);
-    _pipelineBuilt = true;
+
+    _buildStatus = PipelineBuildStatus.Built;
     return new(firstBlock, lastBlocks);
   }
 
