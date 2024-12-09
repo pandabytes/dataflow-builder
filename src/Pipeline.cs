@@ -29,14 +29,14 @@ public sealed class Pipeline<TInitialIn> : IPipeline
         throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
                                             "to indicate pipeline is ready to be built.");
       case PipelineBuildStatus.Forked:
-        if ((this as IPipeline).BranchPipelines.Count == 0)
+        if (AsIPipeline().BranchPipelines.Count == 0)
         {
           throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
         }
         break;
     }
 
-    foreach (var branchPipeline in (this as IPipeline).BranchPipelines)
+    foreach (var branchPipeline in AsIPipeline().BranchPipelines)
     {
       try
       {
@@ -265,7 +265,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
         .First(IsAsync);
       var taskResultType = GetTaskResultType(taskType);
 
-      var branchPipelineType = (branchPipeline as IPipeline).FirstBlock.Value
+      var branchPipelineType = branchPipeline.AsIPipeline().FirstBlock.Value
         .GetType()
         .GetGenericArguments()
         .First();
@@ -278,10 +278,10 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       ");
     }
 
-    var firstBlockBranchPipeline = (branchPipeline as IPipeline).FirstBlock.Value as ITargetBlock<TIn>
+    var firstBlockBranchPipeline = branchPipeline.AsIPipeline().FirstBlock.Value as ITargetBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
     
-    var lastSrcBlock = (this as IPipeline).LastBlock.Value as ISourceBlock<TIn>
+    var lastSrcBlock = AsIPipeline().LastBlock.Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
     if (predicate is null)
@@ -298,7 +298,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   public PipelineRunner<TInitialIn> Build()
   {
-    (this as IPipeline).BeforeBuild();
+    AsIPipeline().BeforeBuild();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
@@ -312,10 +312,10 @@ public sealed class Pipeline<TInitialIn> : IPipeline
   private IList<PipelineBlock> GetLastBlocks()
   {
     var leafBlocks = new List<PipelineBlock>();
-    FindLeafBlocksRecursively(this, leafBlocks);
+    FindLastBlocksRecursively(this, leafBlocks);
     return leafBlocks;
 
-    static void FindLeafBlocksRecursively(IPipeline currentPipeline, IList<PipelineBlock> leafBlocks)
+    static void FindLastBlocksRecursively(IPipeline currentPipeline, IList<PipelineBlock> leafBlocks)
     {
       if (!currentPipeline.BranchPipelines.Any())
       {
@@ -325,10 +325,12 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
       foreach (var pipeline in currentPipeline.BranchPipelines)
       {
-        FindLeafBlocksRecursively(pipeline, leafBlocks);
+        FindLastBlocksRecursively(pipeline, leafBlocks);
       }
     }
   }
+
+  private IPipeline AsIPipeline() => this;
 
   private static bool IsAsync(Type type)
   {
