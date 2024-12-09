@@ -67,13 +67,13 @@ static async Task FooAsync()
     .AddFirstBlock(n => n)
     .AddLastBlock(n => Console.WriteLine($"Greater than 10 {n}"), pipelineBlockOpts);
 
-  var branch1 = new Pipeline<int>("b-1");
-    branch1
-      .AddFirstBlock(number => number)
-      .Fork()
-        .Branch(n => n <= 10, branch4, pipelineBlockOpts.LinkOptions)
-        .Branch(n => n > 10, branch5, pipelineBlockOpts.LinkOptions)
-      ;
+  // var branch1 = new Pipeline<int>("b-1");
+  //   branch1
+  //     .AddFirstBlock(number => number)
+  //     .Fork()
+  //       .Branch(n => n <= 10, branch4, pipelineBlockOpts.LinkOptions)
+  //       .Branch(n => n > 10, branch5, pipelineBlockOpts.LinkOptions)
+  //     ;
 
   var branch2 = new Pipeline<int>("b-2");
     branch2
@@ -94,12 +94,13 @@ static async Task FooAsync()
     //   await Task.Delay(500);
     //   return n;
     // }, pipelineBlockOpts)
-    .AddBlock(number => number*number, pipelineBlockOpts)
+    .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
+    // .AddBlock(async number => number*number, pipelineBlockOpts, true)
     // .AddLastAsyncBlock(async n => {}, pipelineBlockOpts)
-    // .AddLastBlock(n => {}, pipelineBlockOpts)
+    // .AddLastBlock(n => { Console.WriteLine(n.Result); }, pipelineBlockOpts)
     .Fork()
-      .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
-      .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
+      // .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
+      // .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
       .Default(branch3, pipelineBlockOpts.LinkOptions);
     ;
 

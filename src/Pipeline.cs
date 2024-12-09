@@ -100,10 +100,11 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   internal IntermediateBuildingBlock<TInitialIn, TOut> AddBlock<TIn, TOut>(
     Func<TIn, TOut> func,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions? pipelineBlockOptions = null,
+    bool allowTaskOutput = false
   )
   {
-    if (IsAsync(typeof(TOut)))
+    if (!allowTaskOutput && IsAsync(typeof(TOut)))
     {
       throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
     }
@@ -257,20 +258,41 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
     }
 
-    // TODO: handle async
-    var firstBlockSubPipeline = branchPipeline._blocks.First().Value as ITargetBlock<TIn>
+    var lastBlock = _blocks.Last();
+    if (lastBlock.IsBlockAsync)
+    {
+      var taskType = lastBlock.Value
+        .GetType()
+        .GetGenericArguments()
+        .First(IsAsync);
+      var taskResultType = GetTaskResultType(taskType);
+
+      var branchPipelineType = (branchPipeline as IPipeline).FirstBlock.Value
+        .GetType()
+        .GetGenericArguments()
+        .First();
+
+      throw new InvalidOperationException($@"
+        Last block in pipeline contains an async operation, in which cannot
+        be connected to the first block of branch pipeline ""{branchPipeline.Id}"".
+        Because Task<{taskResultType.Name}> is not the input type {branchPipelineType.Name}
+        that branch pipeline ""{branchPipeline.Id}"" expects.
+      ");
+    }
+
+    var firstBlockBranchPipeline = (branchPipeline as IPipeline).FirstBlock.Value as ITargetBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
     
-    var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
+    var lastSrcBlock = (this as IPipeline).LastBlock.Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
     if (predicate is null)
     {
-      lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new());
+      lastSrcBlock.LinkTo(firstBlockBranchPipeline, linkOptions ?? new());
     }
     else
     {
-      lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new(), predicate);
+      lastSrcBlock.LinkTo(firstBlockBranchPipeline, linkOptions ?? new(), predicate);
     }
 
     ((IPipeline)this).BranchPipelines.Add(branchPipeline);
@@ -314,5 +336,24 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     return type == typeof(Task) || 
             (type.IsGenericType && 
             type.GetGenericTypeDefinition() == typeof(Task<>));
+  }
+
+  private static Type GetTaskResultType(Type taskType)
+  {
+    if (!IsAsync(taskType))
+    {
+      throw new Exception("oh no");
+    }
+
+    var genericTypes = taskType.GetGenericArguments();
+    return genericTypes.First();
+  }
+
+  private static void ShowGenericTypes(Type type)
+  {
+    foreach (var genericType in type.GetGenericArguments())
+    {
+      System.Console.WriteLine(genericType.FullName);
+    }
   }
 }
