@@ -1,17 +1,7 @@
 ﻿
 // var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
 var pipelineBlockOpts = new PipelineBlockOptions { LinkOptions = new() { PropagateCompletion = true } };
-var pipelineBuilder = new Pipeline<string>();
-
-var sub1 = new Pipeline<int>();
-  sub1
-    .AddFirstBlock(number => number)
-    .AddLastBlock(Console.WriteLine, pipelineBlockOpts);
-
-var sub2 = new Pipeline<int>();
-  sub2
-    .AddFirstBlock(number => number)
-    .AddLastBlock(Console.WriteLine, pipelineBlockOpts);
+var pipelineBuilder = new Pipeline<string>("A");
 
 pipelineBuilder
   // ******* Begin with async
@@ -47,9 +37,6 @@ pipelineBuilder
   //   return $"[{str}]";
   // }, pipelineBlockOpts)
   // .AddLastBlock(Console.WriteLine, linkOptions: linkOpts)
-  .Fork()
-    .Branch(n => n % 2 == 0, sub1)
-    .Branch(n => n % 2 != 0, sub2)
   // .AddLastAsyncBlock(async str =>
   // {
   //   await Task.Delay(1000);
@@ -70,25 +57,46 @@ static async Task FooAsync()
     LinkOptions = new() { PropagateCompletion = true }
   };
 
-  var branch1 = new Pipeline<int>();
+  var branch4 = new Pipeline<int>("b-4");
+  branch4
+    .AddFirstBlock(n => n)
+    .AddLastBlock(n => Console.WriteLine($"Less than 10 {n}"), pipelineBlockOpts);
+
+  var branch5 = new Pipeline<int>("b-5");
+  branch5
+    .AddFirstBlock(n => n)
+    .AddLastBlock(n => Console.WriteLine($"Greater than 10 {n}"), pipelineBlockOpts);
+
+  var branch1 = new Pipeline<int>("b-1");
     branch1
       .AddFirstBlock(number => number)
-      .AddLastBlock(n => Console.WriteLine($"Divisible by 2 {n}"), pipelineBlockOpts);
+      .Fork()
+        .Branch(n => n <= 10, branch4, pipelineBlockOpts.LinkOptions)
+        .Branch(n => n > 10, branch5, pipelineBlockOpts.LinkOptions)
+      ;
 
-  var branch2 = new Pipeline<int>();
+  var branch2 = new Pipeline<int>("b-2");
     branch2
       .AddFirstBlock(number => number)
       .AddLastBlock(n => Console.WriteLine($"Divisible by 5 {n}"), pipelineBlockOpts);
 
-  var branch3 = new Pipeline<int>();
+  var branch3 = new Pipeline<int>("b-3");
     branch3
       .AddFirstBlock(number => number)
       .AddLastBlock(n => Console.WriteLine($"ALL {n}"), pipelineBlockOpts);
 
-  var pipeline = new Pipeline<string>();
+  var pipeline = new Pipeline<string>("root");
   pipeline
     .AddFirstBlock(int.Parse)
+    // .AddAsyncBlock(async n =>
+    // {
+    //   // Thread.Sleep(500);
+    //   await Task.Delay(500);
+    //   return n;
+    // }, pipelineBlockOpts)
     .AddBlock(number => number*number, pipelineBlockOpts)
+    // .AddLastAsyncBlock(async n => {}, pipelineBlockOpts)
+    // .AddLastBlock(n => {}, pipelineBlockOpts)
     .Fork()
       .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
       .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
@@ -96,5 +104,5 @@ static async Task FooAsync()
     ;
 
   var pipelineRunner = pipeline.Build();
-  await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
+  // await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
 }

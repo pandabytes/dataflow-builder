@@ -16,8 +16,21 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   IList<IPipeline> IPipeline.BranchPipelines => _branchPipelines;
 
-  public Pipeline()
+  void IPipeline.SetupForBuild()
   {
+    ValidateBeforeBuild();
+  }
+
+  public string Id { get; }
+
+  public Pipeline(string id)
+  {
+    if (string.IsNullOrWhiteSpace(id))
+    {
+      throw new ArgumentException("Pipeline id must not be empty or null.", nameof(id));
+    }
+
+    Id = id;
     _blocks = new List<PipelineBlock>();
     _branchPipelines = new List<IPipeline>();
     _lastBlockAdded = false;
@@ -251,15 +264,14 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   public PipelineRunner<TInitialIn> Build()
   {
-    ValidateBeforeBuild();
+    (this as IPipeline).SetupForBuild();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
 
     var leafBlocks = GetLeafBlocks();
-
     _pipelineBuilt = true;
-    return new(firstBlock, leafBlocks.Select(block => block.Value));
+    return new(firstBlock, leafBlocks.Select(tuple => tuple.Item2.Value));
   }
 
   private void ValidateBeforeBuild()
@@ -279,19 +291,31 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
                                           "to indicate pipeline is ready to be built.");
     }
+  
+    foreach (var branchPipeline in (this as IPipeline).BranchPipelines)
+    {
+      try
+      {
+        branchPipeline.SetupForBuild();
+      }
+      catch (Exception ex)
+      {
+        throw new InvalidOperationException($"Branch pipeline {branchPipeline.Id} failed to be built.", ex);
+      }
+    }
   }
 
-  private IList<PipelineBlock> GetLeafBlocks()
+  private IList<(string, PipelineBlock)> GetLeafBlocks()
   {
-    var leafBlocks = new List<PipelineBlock>();
+    var leafBlocks = new List<(string, PipelineBlock)>();
     FindLeafBlocksRecursively(this, leafBlocks);
     return leafBlocks;
 
-    static void FindLeafBlocksRecursively(IPipeline currentPipeline, IList<PipelineBlock> leafBlocks)
+    static void FindLeafBlocksRecursively(IPipeline currentPipeline, IList<(string, PipelineBlock)> leafBlocks)
     {
       if (!currentPipeline.BranchPipelines.Any())
       {
-        leafBlocks.Add(currentPipeline.LastBlock);
+        leafBlocks.Add((currentPipeline.Id, currentPipeline.LastBlock));
         return;
       }
 
