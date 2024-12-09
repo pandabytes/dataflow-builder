@@ -8,12 +8,16 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   private readonly IList<IPipeline> _branchPipelines;
 
+  /// <inheritdoc/>
   PipelineBlock IPipeline.FirstBlock => _blocks.First();
 
+  /// <inheritdoc/>
   PipelineBlock IPipeline.LastBlock => _blocks.Last();
 
+  /// <inheritdoc/>
   IList<IPipeline> IPipeline.BranchPipelines => _branchPipelines;
 
+  /// <inheritdoc/>
   void IPipeline.BeforeBuild()
   {
     if (_blocks.Count == 0)
@@ -24,7 +28,8 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     switch (_buildStatus)
     {
       case PipelineBuildStatus.Built:
-        throw new InvalidOperationException($"Pipeline already built. Please create a new {nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
+        throw new InvalidOperationException($"Pipeline already built. Please create a new " +
+                                            $"{nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
       case PipelineBuildStatus.Progress:
         throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
                                             "to indicate pipeline is ready to be built.");
@@ -49,6 +54,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     }
   }
 
+  /// <inheritdoc/>
   public string Id { get; }
 
   public Pipeline(string id)
@@ -99,7 +105,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     return new(this);
   }
 
-  internal IntermediateBuildingBlock<TInitialIn, TOut> AddBlock<TIn, TOut>(
+  internal void AddBlock<TIn, TOut>(
     Func<TIn, TOut> func,
     PipelineBlockOptions? pipelineBlockOptions = null,
     bool allowTaskOutput = false
@@ -118,6 +124,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     var blockOptions = pipelineBlockOptions?.BlockOptions ?? new();
     var linkOptions = pipelineBlockOptions?.LinkOptions ?? new();
     var lastBlock = _blocks.Last();
+
     if (lastBlock.IsBlockAsync)
     {
       var newBlock = new TransformBlock<Task<TIn>, TOut>(async inputTask => func(await inputTask), blockOptions);
@@ -136,10 +143,9 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       lastSrcBlock.LinkTo(newBlock, linkOptions);
       _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     }
-    return new(this);
   }
 
-  internal IntermediateBuildingBlock<TInitialIn, TOut> AddAsyncBlock<TIn, TOut>(
+  internal void AddAsyncBlock<TIn, TOut>(
     Func<TIn, Task<TOut>> func,
     PipelineBlockOptions? pipelineBlockOptions = null
   )
@@ -174,7 +180,6 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     }
  
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
-    return new(this);
   }
 
   internal void AddLastBlock<TIn>(
@@ -265,10 +270,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
         .First(IsAsync);
       var taskResultType = GetTaskResultType(taskType);
 
-      var branchPipelineType = branchPipeline.AsIPipeline().FirstBlock.Value
-        .GetType()
-        .GetGenericArguments()
-        .First();
+      var branchPipelineType = branchPipeline.GetType().GetGenericArguments().First();
 
       throw new InvalidOperationException($@"
         Last block in pipeline contains an async operation, in which cannot

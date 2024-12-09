@@ -1,4 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="DataflowBuilder.Tests" />
+  </ItemGroup>
 
 </Project>
