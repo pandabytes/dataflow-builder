@@ -16,9 +16,35 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   IList<IPipeline> IPipeline.BranchPipelines => _branchPipelines;
 
-  void IPipeline.SetupForBuild()
+  void IPipeline.BeforeBuild()
   {
-    ValidateBeforeBuild();
+    if (_pipelineBuilt)
+    {
+      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
+    }
+
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Pipeline does not have any block defined.");
+    }
+
+    if (!_lastBlockAdded)
+    {
+      throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
+                                          "to indicate pipeline is ready to be built.");
+    }
+  
+    foreach (var branchPipeline in (this as IPipeline).BranchPipelines)
+    {
+      try
+      {
+        branchPipeline.BeforeBuild();
+      }
+      catch (Exception ex)
+      {
+        throw new InvalidOperationException($"Branch pipeline {branchPipeline.Id} failed to be built.", ex);
+      }
+    }
   }
 
   public string Id { get; }
@@ -264,58 +290,27 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
   public PipelineRunner<TInitialIn> Build()
   {
-    (this as IPipeline).SetupForBuild();
+    (this as IPipeline).BeforeBuild();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
 
-    var leafBlocks = GetLeafBlocks();
+    var lastBlocks = GetLastBlocks().Select(block => block.Value);
     _pipelineBuilt = true;
-    return new(firstBlock, leafBlocks.Select(tuple => tuple.Item2.Value));
+    return new(firstBlock, lastBlocks);
   }
 
-  private void ValidateBeforeBuild()
+  private IList<PipelineBlock> GetLastBlocks()
   {
-    if (_pipelineBuilt)
-    {
-      throw new InvalidOperationException($"Pipeline already built. Please use a new {nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
-    }
-
-    if (_blocks.Count == 0)
-    {
-      throw new InvalidOperationException("Pipeline does not have any block defined.");
-    }
-
-    if (!_lastBlockAdded)
-    {
-      throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
-                                          "to indicate pipeline is ready to be built.");
-    }
-  
-    foreach (var branchPipeline in (this as IPipeline).BranchPipelines)
-    {
-      try
-      {
-        branchPipeline.SetupForBuild();
-      }
-      catch (Exception ex)
-      {
-        throw new InvalidOperationException($"Branch pipeline {branchPipeline.Id} failed to be built.", ex);
-      }
-    }
-  }
-
-  private IList<(string, PipelineBlock)> GetLeafBlocks()
-  {
-    var leafBlocks = new List<(string, PipelineBlock)>();
+    var leafBlocks = new List<PipelineBlock>();
     FindLeafBlocksRecursively(this, leafBlocks);
     return leafBlocks;
 
-    static void FindLeafBlocksRecursively(IPipeline currentPipeline, IList<(string, PipelineBlock)> leafBlocks)
+    static void FindLeafBlocksRecursively(IPipeline currentPipeline, IList<PipelineBlock> leafBlocks)
     {
       if (!currentPipeline.BranchPipelines.Any())
       {
-        leafBlocks.Add((currentPipeline.Id, currentPipeline.LastBlock));
+        leafBlocks.Add(currentPipeline.LastBlock);
         return;
       }
 

@@ -104,5 +104,5 @@ static async Task FooAsync()
     ;
 
   var pipelineRunner = pipeline.Build();
-  // await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
+  await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
 }

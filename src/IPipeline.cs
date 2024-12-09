@@ -10,5 +10,5 @@ internal interface IPipeline
 
   IList<IPipeline> BranchPipelines { get; }
 
-  void SetupForBuild();
+  void BeforeBuild();
 }
