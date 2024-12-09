@@ -42,7 +42,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       }
       catch (Exception ex)
       {
-        throw new InvalidOperationException($"Branch pipeline {branchPipeline.Id} failed to be built.", ex);
+        throw new InvalidOperationException($"Branch pipeline \"{branchPipeline.Id}\" failed to be built.", ex);
       }
     }
   }
@@ -246,9 +246,9 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     _lastBlockAdded = true;
   }
 
-  internal void Branch<TIn>(
-    Predicate<TIn> predicate,
+  internal void BranchOrDefault<TIn>(
     Pipeline<TIn> branchPipeline,
+    Predicate<TIn>? predicate = null,
     DataflowLinkOptions? linkOptions = null
   )
   {
@@ -258,33 +258,21 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     }
 
     // TODO: handle async
-    var lastBlock = _blocks.Last().Value;
     var firstBlockSubPipeline = branchPipeline._blocks.First().Value as ITargetBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
     
     var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
-    lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new(), predicate);
-    ((IPipeline)this).BranchPipelines.Add(branchPipeline);
-  }
-
-  internal void Default<TIn>(Pipeline<TIn> branchPipeline, DataflowLinkOptions? linkOptions = null)
-  {
-    if (_blocks.Count == 0)
+    if (predicate is null)
     {
-      throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
+      lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new());
+    }
+    else
+    {
+      lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new(), predicate);
     }
 
-    // TODO: handle async
-    var lastBlock = _blocks.Last().Value;
-    var firstBlockSubPipeline = branchPipeline._blocks.First().Value as ITargetBlock<TIn>
-      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
-    
-    var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
-      ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
-
-    lastSrcBlock.LinkTo(firstBlockSubPipeline, linkOptions ?? new());
     ((IPipeline)this).BranchPipelines.Add(branchPipeline);
   }
 

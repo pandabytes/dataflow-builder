@@ -13,7 +13,7 @@ public sealed class IntermediateForkBlock<TInitialIn, TIn>
     DataflowLinkOptions? linkOptions = null
   )
   {
-    Pipeline.Branch(predicate, branchPipeline, linkOptions);
+    Pipeline.BranchOrDefault(branchPipeline, predicate, linkOptions);
     return this;
   }
 
@@ -22,7 +22,7 @@ public sealed class IntermediateForkBlock<TInitialIn, TIn>
     DataflowLinkOptions? linkOptions = null
   )
   {
-    Pipeline.Default(branchPipeline, linkOptions);
+    Pipeline.BranchOrDefault(branchPipeline, linkOptions: linkOptions);
     return this;
   }
 }
