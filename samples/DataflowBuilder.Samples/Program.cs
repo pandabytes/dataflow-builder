@@ -96,13 +96,17 @@ static async Task FooAsync()
     }, pipelineBlockOpts)
     // .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
     // .AddBlock(async number => number*number, pipelineBlockOpts, true)
-    .AddBlock(number => number*number, pipelineBlockOpts)
+    .AddBlock(number => number, pipelineBlockOpts)
+    .Broadcast(null, pipelineBlockOpts)
+      .Branch(branch2, pipelineBlockOpts.LinkOptions)
+      .Branch(branch3, pipelineBlockOpts.LinkOptions)
+      .Branch(branch4, pipelineBlockOpts.LinkOptions)
     // .AddLastAsyncBlock(async n => {}, pipelineBlockOpts)
     // .AddLastBlock(n => { Console.WriteLine(n.Result); }, pipelineBlockOpts)
-    .Fork()
+    // .Fork()
       // .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
       // .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
-      .Default(branch3, pipelineBlockOpts.LinkOptions);
+      // .Default(branch3, pipelineBlockOpts.LinkOptions);
     ;
 
   var pipelineRunner = pipeline.Build();

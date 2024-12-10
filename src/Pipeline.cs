@@ -57,6 +57,9 @@ public sealed class Pipeline<TInitialIn> : IPipeline
   /// <inheritdoc/>
   public string Id { get; }
 
+  /// <inheritdoc/>
+  public int BlockCount => _blocks.Count;
+
   public Pipeline(string id)
   {
     if (string.IsNullOrWhiteSpace(id))
@@ -296,6 +299,42 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     }
 
     ((IPipeline)this).BranchPipelines.Add(branchPipeline);
+  }
+
+  internal void Broadcast<TIn>(
+    Func<TIn, TIn>? cloningFunc = null,
+    PipelineBlockOptions? pipelineBlockOptions = null
+  )
+  {
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
+    }
+
+    var lastBlock = _blocks.Last();
+    if (lastBlock.IsBlockAsync)
+    {
+      var taskType = lastBlock.Value
+        .GetType()
+        .GetGenericArguments()
+        .First(IsAsync);
+      var taskResultType = GetTaskResultType(taskType);
+
+      throw new InvalidOperationException($@"
+        Last block in pipeline contains an async operation, in which cannot
+        be connected to the broadcast block. Because Task<{taskResultType.Name}>
+        is not the input type {typeof(TIn).Name} that the broadcast block expects.
+      ");
+    }
+
+    var broadcastBlock = new BroadcastBlock<TIn>(cloningFunc, pipelineBlockOptions?.BlockOptions ?? new());
+    var lastSrcBlock = AsIPipeline().LastBlock.Value as ISourceBlock<TIn>
+      ?? throw new ArgumentException($"Cannot link broadcast block to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+
+    lastSrcBlock.LinkTo(broadcastBlock, pipelineBlockOptions?.LinkOptions ?? new());
+    _blocks.Add(new() { Value = broadcastBlock, IsBlockAsync = false });
+
+    _buildStatus = PipelineBuildStatus.Forked;
   }
 
   public PipelineRunner<TInitialIn> Build()

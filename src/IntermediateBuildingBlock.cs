@@ -66,4 +66,10 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
     Pipeline.Fork();
     return new(Pipeline);
   }
+
+  public IntermediateBroadcastBlock<TInitialIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
+  {
+    Pipeline.Broadcast(cloningFunc, pipelineBlockOptions);
+    return new(Pipeline);
+  }
 }
