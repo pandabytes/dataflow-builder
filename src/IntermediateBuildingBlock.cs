@@ -1,5 +1,12 @@
 ﻿namespace DataflowBuilder;
 
+/// <summary>
+/// This class serves as the "intermediate" building block
+/// for building a pipeline. It ensures the property input and output
+/// type are consistent and correct when building a pipeline.
+/// </summary>
+/// <typeparam name="TPipelineFirstIn">Intial type that pipeline accepts.</typeparam>
+/// <typeparam name="TIn">Input type for the next building block.</typeparam>
 public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
 {
   private Pipeline<TPipelineFirstIn> Pipeline { get; }
@@ -51,22 +58,45 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
     return new(Pipeline);
   }
 
+  /// <summary>
+  /// Add the last synchronous block to the pipeline, indicating the pipeline
+  /// is ready to be built.
+  /// </summary>
+  /// <param name="action">The logic of this block.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
   public void AddLastBlock(Action<TIn> action, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Pipeline.AddLastBlock(action, pipelineBlockOptions);
   }
 
+  /// <summary>
+  /// Add the last asynchronous block to the pipeline, indicating the pipeline
+  /// is ready to be built.
+  /// </summary>
+  /// <param name="func">The logic of this block.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
   public void AddLastAsyncBlock(Func<TIn, Task> func, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Pipeline.AddLastAsyncBlock(func, pipelineBlockOptions);
   }
 
+  /// <summary>
+  /// Fork a pipeline into multiple branch pipelines.
+  /// </summary>
+  /// <returns>An object that allows connecting to branch pipelines.</returns>
   public IntermediateForkBlock<TPipelineFirstIn, TIn> Fork()
   {
     Pipeline.Fork();
     return new(Pipeline);
   }
 
+  /// <summary>
+  /// Broadcast the value from the last block in the current pipeline
+  /// to multiple branch pipelines.
+  /// </summary>
+  /// <param name="cloningFunc">The function to use to clone the data when offered to other blocks.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
+  /// <returns>An object that allows connecting to branch pipelines.</returns>
   public IntermediateBroadcastBlock<TPipelineFirstIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Pipeline.Broadcast(cloningFunc, pipelineBlockOptions);

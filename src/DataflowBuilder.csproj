@@ -1,5 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="DataflowBuilder.Tests" />
   </ItemGroup>

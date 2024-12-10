@@ -1,5 +1,9 @@
 namespace DataflowBuilder;
 
+/// <summary>
+/// Pipeline consisting of TPL Dataflow blocks.
+/// </summary>
+/// <typeparam name="TPipelineFirstIn"></typeparam>
 public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
   private readonly IList<PipelineBlock> _blocks;
@@ -60,6 +64,11 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   /// <inheritdoc/>
   public int BlockCount => _blocks.Count;
 
+  /// <summary>
+  /// Constructor.
+  /// </summary>
+  /// <param name="id">Pipeline id.</param>
+  /// <exception cref="ArgumentException">Thrown when id is null or empty.</exception>
   public Pipeline(string id)
   {
     if (string.IsNullOrWhiteSpace(id))
@@ -73,9 +82,20 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     _buildStatus = PipelineBuildStatus.Progress;
   }
 
+  /// <summary>
+  /// Add the first synchronous block to the pipeline. If <typeparamref name="TOut"/> is
+  /// <see cref="Task"/>, an exception will be thrown. This means you should
+  /// use method <see cref="AddFirstAsyncBlock{TOut}(Func{TPipelineFirstIn, Task{TOut}}, ExecutionDataflowBlockOptions?)"/>
+  /// instead.
+  /// </summary>
+  /// <typeparam name="TOut">Output type that this block produces.</typeparam>
+  /// <param name="func">The logic of this block.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
+  /// <returns></returns>
+  /// <exception cref="InvalidOperationException"></exception>
   public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddFirstBlock<TOut>(
     Func<TPipelineFirstIn, TOut> func,
-    ExecutionDataflowBlockOptions? blockOptions = null
+    ExecutionDataflowBlockOptions? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count > 0)
@@ -88,14 +108,25 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TPipelineFirstIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
-    var newBlock = new TransformBlock<TPipelineFirstIn, TOut>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TPipelineFirstIn, TOut>(func, pipelineBlockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     return new(this);
   }
 
+  /// <summary>
+  /// Add the first asynchronous block to the pipeline. Normally when a block produces a <see cref="Task"/>
+  /// object, the next block's input type must be <see cref="Task"/> as well. But
+  /// this method removes "<see cref="Task"/>" and instead it "returns" the type
+  /// inside <see cref="Task"/>. 
+  /// </summary>
+  /// <typeparam name="TOut">Output type that this block produces.</typeparam>
+  /// <param name="func">The logic of this block.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
+  /// <returns></returns>
+  /// <exception cref="InvalidOperationException"></exception>
   public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddFirstAsyncBlock<TOut>(
     Func<TPipelineFirstIn, Task<TOut>> func,
-    ExecutionDataflowBlockOptions? blockOptions = null
+    ExecutionDataflowBlockOptions? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count > 0)
@@ -103,7 +134,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       throw new InvalidOperationException("Pipeline must be empty when adding the first block.");
     }
 
-    var newBlock = new TransformBlock<TPipelineFirstIn, Task<TOut>>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TPipelineFirstIn, Task<TOut>>(func, pipelineBlockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     return new(this);
   }
@@ -337,6 +368,12 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     _buildStatus = PipelineBuildStatus.Forked;
   }
 
+  /// <summary>
+  /// Build the pipeline. A pipeline can only be built once,
+  /// if calling this method again, it throws an exception.
+  /// </summary>
+  /// <returns>A pipeline runner object.</returns>
+  /// <exception cref="InvalidOperationException"></exception>
   public PipelineRunner<TPipelineFirstIn> Build()
   {
     AsIPipeline().BeforeBuild();
