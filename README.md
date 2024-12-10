@@ -26,6 +26,7 @@ var runner = pipeline.Build();
 await runner.ExecuteAsync(["1", "2"]);
 ```
 
+## Async
 For async operation, use `AddAsyncBlock()`. You can mix both async and sync operation to
 build the pipeline. But you can only have either sync or async **first** block AND either sync
 or async **last** block.
@@ -55,6 +56,21 @@ pipeline
 var runner = pipeline.Build();
 await runner.ExecuteAsync(["1", "2"]);
 ```
+
+Normally if you have a pipeline like this:
+```
+(string -> Task<int>) => (Task<int> -> void)
+```
+where the output type of the first block is the type of the next block. However, it can
+be not as "fluent" when building this pipeline with `Task`. So this library includes the
+`AddAsyncBlock` that "unwraps" the task and allows the type inside the `Task` to be carried
+to the next block. For example, the above example now become:
+```
+(string -> Task<int>) => (int -> void)
+```
+
+But if you do need to return a `Task` and the next block does need to accept a `Task`, then
+you can use `AddBlock` with the parameter `allowTaskOutput=true`.
 
 ## Fork
 This library supports "branching" off a pipeline into multiple pipelines by callling `Fork()`:
