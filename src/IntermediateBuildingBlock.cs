@@ -66,4 +66,10 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
     Pipeline.Fork();
     return new(Pipeline);
   }
+
+  public IntermediateBroadcastBlock<TInitialIn, TIn> Broadcast(DataflowLinkOptions? linkOptions = null)
+  {
+    Pipeline.Broadcast<TIn>(linkOptions);
+    return new(Pipeline);
+  }
 }
