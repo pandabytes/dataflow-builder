@@ -1,10 +1,10 @@
 ﻿namespace DataflowBuilder;
 
-public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
+public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
 {
-  private Pipeline<TInitialIn> Pipeline { get; }
+  private Pipeline<TPipelineFirstIn> Pipeline { get; }
 
-  internal IntermediateBuildingBlock(Pipeline<TInitialIn> pipeline)
+  internal IntermediateBuildingBlock(Pipeline<TPipelineFirstIn> pipeline)
     => Pipeline = pipeline;
 
   /// <summary>
@@ -22,7 +22,7 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
   /// <see cref="AddAsyncBlock{TOut}(Func{TIn, Task{TOut}}, PipelineBlockOptions?)"/>
   /// instead.
   /// </param>
-  public IntermediateBuildingBlock<TInitialIn, TOut> AddBlock<TOut>(
+  public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddBlock<TOut>(
     Func<TIn, TOut> func,
     PipelineBlockOptions? pipelineBlockOptions = null,
     bool allowTaskOutput = false
@@ -42,7 +42,7 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
   /// <typeparam name="TOut">Output type that this block produces.</typeparam>
   /// <param name="func">The async logic of this block.</param>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
-  public IntermediateBuildingBlock<TInitialIn, TOut> AddAsyncBlock<TOut>(
+  public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddAsyncBlock<TOut>(
     Func<TIn, Task<TOut>> func, 
     PipelineBlockOptions? pipelineBlockOptions = null
   )
@@ -61,13 +61,13 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
     Pipeline.AddLastAsyncBlock(func, pipelineBlockOptions);
   }
 
-  public IntermediateForkBlock<TInitialIn, TIn> Fork()
+  public IntermediateForkBlock<TPipelineFirstIn, TIn> Fork()
   {
     Pipeline.Fork();
     return new(Pipeline);
   }
 
-  public IntermediateBroadcastBlock<TInitialIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
+  public IntermediateBroadcastBlock<TPipelineFirstIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
   {
     Pipeline.Broadcast(cloningFunc, pipelineBlockOptions);
     return new(Pipeline);

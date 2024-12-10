@@ -1,13 +1,13 @@
 namespace DataflowBuilder;
 
-public sealed class IntermediateForkBlock<TInitialIn, TIn>
+public sealed class IntermediateForkBlock<TPipelineFirstIn, TIn>
 {
-  private Pipeline<TInitialIn> Pipeline { get; }
+  private Pipeline<TPipelineFirstIn> Pipeline { get; }
 
-  internal IntermediateForkBlock(Pipeline<TInitialIn> pipeline)
+  internal IntermediateForkBlock(Pipeline<TPipelineFirstIn> pipeline)
     => Pipeline = pipeline;
 
-  public IntermediateForkBlock<TInitialIn, TIn> Branch(
+  public IntermediateForkBlock<TPipelineFirstIn, TIn> Branch(
     Predicate<TIn> predicate,
     Pipeline<TIn> branchPipeline,
     DataflowLinkOptions? linkOptions = null
@@ -17,7 +17,7 @@ public sealed class IntermediateForkBlock<TInitialIn, TIn>
     return this;
   }
 
-  public IntermediateForkBlock<TInitialIn, TIn> Default(
+  public IntermediateForkBlock<TPipelineFirstIn, TIn> Default(
     Pipeline<TIn> branchPipeline,
     DataflowLinkOptions? linkOptions = null
   )

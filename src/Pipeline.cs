@@ -1,6 +1,6 @@
 namespace DataflowBuilder;
 
-public sealed class Pipeline<TInitialIn> : IPipeline
+public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
   private readonly IList<PipelineBlock> _blocks;
 
@@ -29,9 +29,9 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     {
       case PipelineBuildStatus.Built:
         throw new InvalidOperationException($"Pipeline already built. Please create a new " +
-                                            $"{nameof(Pipeline<TInitialIn>)} to build a new pipeline.");
+                                            $"{nameof(Pipeline<TPipelineFirstIn>)} to build a new pipeline.");
       case PipelineBuildStatus.Progress:
-        throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TInitialIn, object>.AddLastBlock)} " +
+        throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TPipelineFirstIn, object>.AddLastBlock)} " +
                                             "to indicate pipeline is ready to be built.");
       case PipelineBuildStatus.Forked:
         if (AsIPipeline().BranchPipelines.Count == 0)
@@ -73,8 +73,8 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     _buildStatus = PipelineBuildStatus.Progress;
   }
 
-  public IntermediateBuildingBlock<TInitialIn, TOut> AddFirstBlock<TOut>(
-    Func<TInitialIn, TOut> func,
+  public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddFirstBlock<TOut>(
+    Func<TPipelineFirstIn, TOut> func,
     ExecutionDataflowBlockOptions? blockOptions = null
   )
   {
@@ -85,16 +85,16 @@ public sealed class Pipeline<TInitialIn> : IPipeline
 
     if (IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TPipelineFirstIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
-    var newBlock = new TransformBlock<TInitialIn, TOut>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TPipelineFirstIn, TOut>(func, blockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     return new(this);
   }
 
-  public IntermediateBuildingBlock<TInitialIn, TOut> AddFirstAsyncBlock<TOut>(
-    Func<TInitialIn, Task<TOut>> func,
+  public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddFirstAsyncBlock<TOut>(
+    Func<TPipelineFirstIn, Task<TOut>> func,
     ExecutionDataflowBlockOptions? blockOptions = null
   )
   {
@@ -103,7 +103,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
       throw new InvalidOperationException("Pipeline must be empty when adding the first block.");
     }
 
-    var newBlock = new TransformBlock<TInitialIn, Task<TOut>>(func, blockOptions ?? new());
+    var newBlock = new TransformBlock<TPipelineFirstIn, Task<TOut>>(func, blockOptions ?? new());
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     return new(this);
   }
@@ -116,7 +116,7 @@ public sealed class Pipeline<TInitialIn> : IPipeline
   {
     if (!allowTaskOutput && IsAsync(typeof(TOut)))
     {
-      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TInitialIn, TOut>.AddAsyncBlock)} for async operation.");
+      throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TPipelineFirstIn, TOut>.AddAsyncBlock)} for async operation.");
     }
 
     if (_blocks.Count == 0)
@@ -337,12 +337,12 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     _buildStatus = PipelineBuildStatus.Forked;
   }
 
-  public PipelineRunner<TInitialIn> Build()
+  public PipelineRunner<TPipelineFirstIn> Build()
   {
     AsIPipeline().BeforeBuild();
 
-    var firstBlock = _blocks.First().Value as ITargetBlock<TInitialIn>
-      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TInitialIn).FullName}.");
+    var firstBlock = _blocks.First().Value as ITargetBlock<TPipelineFirstIn>
+      ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TPipelineFirstIn).FullName}.");
 
     var lastBlocks = GetLastBlocks().Select(block => block.Value);
 

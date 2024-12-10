@@ -1,13 +1,13 @@
 namespace DataflowBuilder;
 
-public sealed class IntermediateBroadcastBlock<TInitialIn, TIn>
+public sealed class IntermediateBroadcastBlock<TPipelineFirstIn, TIn>
 {
-  private Pipeline<TInitialIn> Pipeline { get; }
+  private Pipeline<TPipelineFirstIn> Pipeline { get; }
 
-  internal IntermediateBroadcastBlock(Pipeline<TInitialIn> pipeline)
+  internal IntermediateBroadcastBlock(Pipeline<TPipelineFirstIn> pipeline)
     => Pipeline = pipeline;
 
-  public IntermediateBroadcastBlock<TInitialIn, TIn> Branch(
+  public IntermediateBroadcastBlock<TPipelineFirstIn, TIn> Branch(
     Pipeline<TIn> branchPipeline,
     DataflowLinkOptions? linkOptions = null
   )
