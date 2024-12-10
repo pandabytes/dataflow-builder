@@ -67,9 +67,9 @@ public sealed class IntermediateBuildingBlock<TInitialIn, TIn>
     return new(Pipeline);
   }
 
-  public IntermediateBroadcastBlock<TInitialIn, TIn> Broadcast(DataflowLinkOptions? linkOptions = null)
+  public IntermediateBroadcastBlock<TInitialIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
   {
-    Pipeline.Broadcast<TIn>(linkOptions);
+    Pipeline.Broadcast(cloningFunc, pipelineBlockOptions);
     return new(Pipeline);
   }
 }

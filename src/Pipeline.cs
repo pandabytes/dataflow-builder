@@ -298,13 +298,16 @@ public sealed class Pipeline<TInitialIn> : IPipeline
     ((IPipeline)this).BranchPipelines.Add(branchPipeline);
   }
 
-  internal void Broadcast<TIn>(DataflowLinkOptions? linkOptions = null)
+  internal void Broadcast<TIn>(
+    Func<TIn, TIn>? cloningFunc = null,
+    PipelineBlockOptions? pipelineBlockOptions = null
+  )
   {
+    var broadcastBlock = new BroadcastBlock<TIn>(cloningFunc, pipelineBlockOptions?.BlockOptions ?? new());
     var lastSrcBlock = AsIPipeline().LastBlock.Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link broadcast block to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
-    var broadcastBlock = new BroadcastBlock<TIn>(null);
-    lastSrcBlock.LinkTo(broadcastBlock, linkOptions ?? new());
+    lastSrcBlock.LinkTo(broadcastBlock, pipelineBlockOptions?.LinkOptions ?? new());
     _blocks.Add(new() { Value = broadcastBlock, IsBlockAsync = false });
 
     _buildStatus = PipelineBuildStatus.Forked;
