@@ -89,4 +89,38 @@ public class PipelineRunnerTests
     Assert.Equal([2, 4], evenNumbers);
     Assert.Equal([3], oddNumbers);
   }
+
+  [Fact]
+  public async Task ExecuteAsync_SimplePipelineWithBroadcast()
+  {
+    // Arrange
+    var b1Results = new List<int>();
+    var b2Results = new List<int>();
+
+    var branchPipeline1 = new Pipeline<int>("b1");
+    branchPipeline1
+      .AddFirstBlock(number => number)
+      .AddLastBlock(b1Results.Add, _pipelineBlockOpts);
+
+    var branchPipeline2 = new Pipeline<int>("b2");
+    branchPipeline2
+      .AddFirstBlock(number => number)
+      .AddLastBlock(b2Results.Add, _pipelineBlockOpts);
+
+    var pipeline = new Pipeline<string>("test");
+    pipeline
+      .AddFirstBlock(int.Parse)
+      .AddBlock(number => number + 1, _pipelineBlockOpts)
+      .Broadcast(null, _pipelineBlockOpts)
+        .Branch(branchPipeline1, _pipelineBlockOpts.LinkOptions)
+        .Branch(branchPipeline2, _pipelineBlockOpts.LinkOptions);
+
+    // Act
+    var pipelineRunner = pipeline.Build();
+    await pipelineRunner.ExecuteAsync(["1", "2", "3"]);
+
+    // Assert
+    Assert.Equal([2, 3, 4], b1Results);
+    Assert.Equal([2, 3, 4], b2Results);
+  }
 }

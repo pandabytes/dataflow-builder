@@ -334,6 +334,45 @@ public class PipelineTests
 
   #endregion
 
+  #region Broadcast
+
+  [Fact]
+  public void Broadcast_PipelineEmptyThrowsException()
+  {
+    // Arrange
+    var pipeline = new Pipeline<string>("test");
+
+    // Act & Assert
+    Assert.Throws<InvalidOperationException>(() => pipeline.Broadcast<string>());
+  }
+
+  [Fact]
+  public void Broadcast_LastBlockIsAsync_ThrowsException()
+  {
+    // Arrange
+    var pipeline = new Pipeline<string>("test");
+    pipeline.AddFirstAsyncBlock(x => Task.FromResult(0));
+
+    // Act & Assert
+    Assert.Throws<InvalidOperationException>(() => pipeline.Broadcast<string>());
+  }
+
+  [Fact]
+  public void Broadcast_Valid_BroadcastBlockIsAdded()
+  {
+    // Arrange
+    var pipeline = new Pipeline<string>("test");
+    pipeline.AddFirstBlock(x => x);
+
+    // Act
+    pipeline.Broadcast<string>();
+
+    // Assert
+    Assert.Equal(2, pipeline.BlockCount);
+  }
+
+  #endregion
+
   #region Build
 
   [Fact]
@@ -435,5 +474,4 @@ public class PipelineTests
   }
 
   #endregion
-
 }

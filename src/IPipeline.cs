@@ -6,6 +6,12 @@ internal interface IPipeline
   /// Id of a pipeline.
   /// </summary>
   string Id { get; }
+
+  /// <summary>
+  /// Number of blocks in the pipeline, excluding
+  /// blocks from branch pipelines.
+  /// </summary>
+  int BlockCount { get; }
   
   /// <summary>
   /// First block in the pipeline.
