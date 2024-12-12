@@ -59,6 +59,24 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   }
 
   /// <summary>
+  /// Add a block to the pipeline where the output is delivered to the
+  /// next block as if it's a single element until the <see cref="IEnumerable{T}"/>.
+  /// is fully enumerated.
+  /// every element in
+  /// </summary>
+  /// <typeparam name="TOut">Output type that this block produces.</typeparam>
+  /// <param name="func">The async logic of this block.</param>
+  /// <param name="pipelineBlockOptions">Pipeline block options.</param>
+  public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddManyBlock<TOut>(
+    Func<TIn, IEnumerable<TOut>> func,
+    PipelineBlockOptions? pipelineBlockOptions = null
+  )
+  {
+    Pipeline.AddManyBlock(func, pipelineBlockOptions);
+    return new(Pipeline);
+  }
+
+  /// <summary>
   /// Add the last synchronous block to the pipeline, indicating the pipeline
   /// is ready to be built.
   /// </summary>
