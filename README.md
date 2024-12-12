@@ -19,11 +19,12 @@ var pipeline = new Pipeline<string>("test-pipeline");
 pipeline
   .AddFirstBlock(int.Parse) // Convert string to int
   .AddBlock(number => number * 2, pipelineBlockOpts) // Double each int
-  .AddBlock(number => number.ToString(), pipelineBlockOpts) // Convert int bakc to string
-  .AddLastBlock(str => Console.WriteLine($"OUTPUT: {str}"), pipelineBlockOpts); // Print to console
+  .AddBlock(number => number.ToString(), pipelineBlockOpts) // Convert int back to string
+  .AddManyBlock(str => str.ToArray(), pipelineBlockOpts) // Convert string to char array & each char is sent to next block
+  .AddLastBlock(character => Console.WriteLine($"OUTPUT: {character}"), pipelineBlockOpts); // Print to console
 
 var runner = pipeline.Build();
-await runner.ExecuteAsync(["1", "2"]);
+await runner.ExecuteAsync(["10", "20"]);
 ```
 
 ## Async
@@ -63,8 +64,8 @@ Normally if you have a pipeline like this:
 ```
 where the output type of the first block is the type of the next block. However, it can
 be not as "fluent" when building this pipeline with `Task`. So this library includes the
-`AddAsyncBlock` that "unwraps" the task and allows the type inside the `Task` to be carried
-to the next block. For example, the above example now become:
+`AddAsyncBlock` that "unwraps" the task for you, and allows the type inside the `Task` to
+be carried to the next block. For example, the above example now become:
 ```
 (string -> Task<int>) => (int -> void)
 ```
