@@ -216,6 +216,40 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
   }
 
+  internal void AddManyBlock<TIn, TOut>(
+    Func<TIn, IEnumerable<TOut>> func,
+    PipelineBlockOptions? pipelineBlockOptions = null
+  )
+  {
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Expected pipeline to already have at least 1 block.");
+    }
+
+    var blockOptions = pipelineBlockOptions?.BlockOptions ?? new();
+    var linkOptions = pipelineBlockOptions?.LinkOptions ?? new();
+    var lastBlock = _blocks.Last();
+
+    if (lastBlock.IsBlockAsync)
+    {
+      var newBlock = new TransformManyBlock<Task<TIn>, TOut>(async inputTask => func(await inputTask), blockOptions);
+      var lastSrcBlock = _blocks.Last().Value as ISourceBlock<Task<TIn>>
+        ?? throw new ArgumentException($"Cannot link many block to the last async block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+
+      lastSrcBlock.LinkTo(newBlock, linkOptions);
+      _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
+    }
+    else
+    {
+      var newBlock = new TransformManyBlock<TIn, TOut>(func, blockOptions);
+      var lastSrcBlock = _blocks.Last().Value as ISourceBlock<TIn>
+        ?? throw new ArgumentException($"Cannot link many block to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
+
+      lastSrcBlock.LinkTo(newBlock, linkOptions);
+      _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
+    }
+  }
+
   internal void AddLastBlock<TIn>(
     Action<TIn> action,
     PipelineBlockOptions? pipelineBlockOptions = null

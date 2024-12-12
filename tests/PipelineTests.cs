@@ -187,6 +187,34 @@ public class PipelineTests
 
   #endregion
 
+  #region AddManyBlock
+
+  [Fact]
+  public void AddManyBlock_PipelineEmpty_ThrowsException()
+  {
+    // Arrange
+    var pipeline = new Pipeline<object>("test");
+
+    // Act & Assert
+    Assert.Throws<InvalidOperationException>(() => pipeline.AddManyBlock<object, object>(x => []));
+  }
+
+  [Fact]
+  public void AddManyBlock_PipelineNotEmpty_BlockIsAdded()
+  {
+    // Arrange
+    var pipeline = new Pipeline<string>("test");
+    pipeline.AddFirstBlock(x => x);
+
+    // Act
+    pipeline.AddManyBlock<string, char>(x => [..x]);
+
+    // Assert
+    Assert.Equal(2, pipeline.BlockCount);
+  }
+
+  #endregion
+
   #region AddLastBlock
 
   [Fact]

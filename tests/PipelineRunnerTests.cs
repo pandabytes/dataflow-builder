@@ -17,14 +17,15 @@ public class PipelineRunnerTests
     pipeline
       .AddFirstBlock(int.Parse)
       .AddBlock(number => number * 2, _pipelineBlockOpts)
+      .AddManyBlock(number => Enumerable.Range(0, number), _pipelineBlockOpts)
       .AddLastBlock(results.Add, _pipelineBlockOpts);
 
     // Act
     var pipelineRunner = pipeline.Build();
-    await pipelineRunner.ExecuteAsync(["1", "2", "3"]);
+    await pipelineRunner.ExecuteAsync(["2"]);
 
     // Assert
-    Assert.Equal([2, 4, 6], results);
+    Assert.Equal([0, 1, 2, 3], results);
   }
 
   [Fact]
