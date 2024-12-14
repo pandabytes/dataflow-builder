@@ -22,14 +22,17 @@ internal class GraphvizExporter
     // Add a start node which represent
     // the starting point where input
     // is fed into the pipeline
+    const string startNodeId = "start_node_id";
     graph.Add(new DotNode()
-      .WithIdentifier("start")
+      .WithIdentifier(startNodeId)
       .WithLabel("Start")
     );
 
+    var (inputTypeName, _) = GetBlockTypeNames(pipeline.Blocks[0].Value);
     graph.Add(new DotEdge()
-      .From("start")
+      .From(startNodeId)
       .To(firstNodeId)
+      .WithLabel(inputTypeName)
     );
 
     await using var writer = new StringWriter();
@@ -52,22 +55,24 @@ internal class GraphvizExporter
 
       var fromDotNode = new DotNode()
         .WithIdentifier(fromNodeId)
-        .WithLabel(fromNodeId)
+        .WithLabel(i.ToString())
         .WithShape("box");
 
       var toDotNode = new DotNode()
         .WithIdentifier(toNodeId)
-        .WithLabel(toNodeId)
+        .WithLabel((i + 1).ToString())
         .WithShape("box");
 
       subgraph.Add(fromDotNode);
       subgraph.Add(toDotNode);
 
       // Add edge
+      var (_, outputTypeName) = GetBlockTypeNames(pipeline.Blocks[i].Value);
       var dotEdge = new DotEdge()
         .From(fromNodeId)
         .To(toNodeId)
-        .WithLabel("x");
+        // Label is the output type of the previous block
+        .WithLabel(outputTypeName);
 
       subgraph.Add(dotEdge);
     }
@@ -77,6 +82,18 @@ internal class GraphvizExporter
     return (firstNodeId, lastNodeId, subgraph);
   }
 
+  /// <summary>
+  /// Add subgraph to the <paramref name="graph"/>
+  /// recursively. Effectivly building the graphviz graph.
+  /// </summary>
+  /// <param name="pipeline"></param>
+  /// <param name="graph"></param>
+  /// <param name="pipelineNumber">This is used to make each pipeline unique.</param>
+  /// <returns>
+  /// Tuple where 1st item is the graphviz node id of
+  /// the first block in the pipeline, and 2nd item
+  /// is the graphviz node id of the last block.
+  /// </returns>
   private static (string, string) AddSubgraphRecursively(IPipeline pipeline, DotGraph graph, int pipelineNumber)
   {
     var (firstNodeId, lastNodeId, subgraph) = ToDotSubgraph(pipeline, pipelineNumber);
@@ -96,4 +113,41 @@ internal class GraphvizExporter
 
   private static string GetDotNodeId(string pipelineId, string blockId)
     => $"node_{pipelineId}_{blockId}";
+
+  /// <summary>
+  /// Return a tuple where 1st item is the
+  /// input type name of the block and 2nd
+  /// item is the output type name of
+  /// the block.
+  /// </summary>
+  /// <exception cref="NotSupportedException"></exception>
+  private static (string, string) GetBlockTypeNames(IDataflowBlock block)
+  {
+    var blockType = block.GetType();
+    var blockGenericTypeDef = blockType.GetGenericTypeDefinition();
+
+    if (blockGenericTypeDef == typeof(TransformBlock<,>)
+        || blockGenericTypeDef == typeof(TransformManyBlock<,>))
+    {
+      
+      var firstGenericType = blockType.GetGenericArguments().First();
+      var lastGenericType = blockType.GetGenericArguments().Last();
+
+      string inputTypeName = firstGenericType.Name;
+      if (firstGenericType.IsAsync())
+      {
+        inputTypeName = $"Task<{firstGenericType.GetTaskResultType().Name}>";
+      }
+
+      string outputTypeName = lastGenericType.Name;
+      if (lastGenericType.IsAsync())
+      {
+        outputTypeName = $"Task<{lastGenericType.GetTaskResultType().Name}>";
+      }
+
+      return (inputTypeName, outputTypeName);
+    }
+
+    throw new NotSupportedException($"{blockType} not supported.");
+  }
 }

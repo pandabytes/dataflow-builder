@@ -103,7 +103,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       throw new InvalidOperationException("Pipeline must be empty when adding the first block.");
     }
 
-    if (IsAsync(typeof(TOut)))
+    if (typeof(TOut).IsAsync())
     {
       throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TPipelineFirstIn, TOut>.AddAsyncBlock)} for async operation.");
     }
@@ -145,7 +145,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     bool allowTaskOutput = false
   )
   {
-    if (!allowTaskOutput && IsAsync(typeof(TOut)))
+    if (!allowTaskOutput && typeof(TOut).IsAsync())
     {
       throw new InvalidOperationException($"Please use the method {nameof(IntermediateBuildingBlock<TPipelineFirstIn, TOut>.AddAsyncBlock)} for async operation.");
     }
@@ -335,8 +335,8 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       var taskType = lastBlock.Value
         .GetType()
         .GetGenericArguments()
-        .First(IsAsync);
-      var taskResultType = GetTaskResultType(taskType);
+        .First(type => type.IsAsync());
+      var taskResultType = taskType.GetTaskResultType();
 
       var branchPipelineType = branchPipeline.GetType().GetGenericArguments().First();
 
@@ -382,8 +382,8 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       var taskType = lastBlock.Value
         .GetType()
         .GetGenericArguments()
-        .First(IsAsync);
-      var taskResultType = GetTaskResultType(taskType);
+        .First(type => type.IsAsync());
+      var taskResultType = taskType.GetTaskResultType();
 
       throw new InvalidOperationException($@"
         Last block in pipeline contains an async operation, in which cannot
@@ -448,32 +448,6 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       {
         FindLastBlocksRecursively(pipeline, leafBlocks);
       }
-    }
-  }
-
-  private static bool IsAsync(Type type)
-  {
-    return type == typeof(Task) || 
-            (type.IsGenericType && 
-            type.GetGenericTypeDefinition() == typeof(Task<>));
-  }
-
-  private static Type GetTaskResultType(Type taskType)
-  {
-    if (!IsAsync(taskType))
-    {
-      throw new Exception("oh no");
-    }
-
-    var genericTypes = taskType.GetGenericArguments();
-    return genericTypes.First();
-  }
-
-  private static void ShowGenericTypes(Type type)
-  {
-    foreach (var genericType in type.GetGenericArguments())
-    {
-      System.Console.WriteLine(genericType.FullName);
     }
   }
 }
