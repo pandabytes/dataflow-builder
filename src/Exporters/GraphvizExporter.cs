@@ -11,7 +11,7 @@ namespace DataflowBuilder.Exporters;
 public sealed class GraphvizExporter : IPipelineExporter
 {
   /// <inheritdoc/>
-  public async Task<string> ExportAsync(IPipeline pipeline)
+  public async Task<string> ExportAsync(IPipeline pipeline, CancellationToken cancellationToken)
   {
     var graph = new DotGraph()
       .WithIdentifier("Pipeline")
@@ -38,6 +38,10 @@ public sealed class GraphvizExporter : IPipelineExporter
       .To(firstNodeId)
       .WithLabel(inputTypeName)
     );
+
+    // DotNetGraph doesn't support accepting cancellation token
+    // so we manually check if cancellation is requested here
+    cancellationToken.ThrowIfCancellationRequested();
 
     await using var writer = new StringWriter();
     var context = new CompilationContext(writer, new CompilationOptions());

@@ -28,8 +28,9 @@ public interface IPipeline
   /// based off of <paramref name="pipelineExporter"/>.
   /// </summary>
   /// <param name="pipelineExporter">Pipeline exporter.</param>
+  /// <param name="cancellationToken">Cancellation token.</param>
   /// <returns>Pipeline string representation.</returns>
-  Task<string> ExportAsync(IPipelineExporter pipelineExporter);
+  Task<string> ExportAsync(IPipelineExporter pipelineExporter, CancellationToken cancellationToken = default);
 
   /// <summary>
   /// Get called before a pipeline is built.

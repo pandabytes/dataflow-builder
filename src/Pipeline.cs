@@ -423,8 +423,8 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   }
 
   /// <inheritdoc/>
-  public Task<string> ExportAsync(IPipelineExporter pipelineExporter)
-    => pipelineExporter.ExportAsync(this);
+  public Task<string> ExportAsync(IPipelineExporter pipelineExporter, CancellationToken cancellationToken = default)
+    => pipelineExporter.ExportAsync(this, cancellationToken);
 
   private IList<PipelineBlock> GetLastBlocks()
   {
