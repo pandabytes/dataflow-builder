@@ -9,7 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetGraph" Version="3.2.0" />
+    <PackageReference Include="DotNetGraph" Version="3.2.0" PrivateAssets="compile" />
   </ItemGroup>
 
 </Project>
