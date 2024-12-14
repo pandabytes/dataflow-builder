@@ -1,6 +1,4 @@
-using DotNetGraph.Compilation;
-using DotNetGraph.Core;
-using DotNetGraph.Extensions;
+using DataflowBuilder.Exports;
 
 namespace DataflowBuilder;
 
@@ -10,6 +8,9 @@ namespace DataflowBuilder;
 /// <typeparam name="TPipelineFirstIn"></typeparam>
 public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
+  // TODO: consider using DI?
+  private readonly GraphvizExporter _graphvizExporter;
+
   private readonly List<PipelineBlock> _blocks;
 
   private readonly List<IPipeline> _branchPipelines;
@@ -78,6 +79,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     _blocks = new List<PipelineBlock>();
     _branchPipelines = new List<IPipeline>();
     _buildStatus = PipelineBuildStatus.Progress;
+    _graphvizExporter = new();
   }
 
   /// <summary>
@@ -420,70 +422,12 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   }
 
   /// <summary>
-  /// 
+  /// Get Graphviz representation.
   /// </summary>
-  /// <returns></returns>
-  public async Task<string> ToGraphVizAsync()
+  /// <returns>Graphviz string representation.</returns>
+  public Task<string> ToGraphVizAsync()
   {
-    var graph = new DotGraph()
-      .WithIdentifier("Pipeline")
-      .WithRankDir(DotRankDir.LR)
-      .Directed();
-
-    var subgraph = new DotSubgraph()
-      .WithIdentifier("x");
-      
-    graph.Add(subgraph);
-
-    subgraph.Add(new DotNode()
-      .WithIdentifier("first")
-      .WithLabel("Start")
-    );
-
-    for (int i = 0; i < _blocks.Count - 1; i++)
-    {
-      var fromNodeId = i.ToString();
-      var toNodeId = (i + 1).ToString();
-
-      var fromDotNode = new DotNode()
-        .WithIdentifier(fromNodeId)
-        .WithLabel(fromNodeId)
-        .WithShape("box");
-
-      var toDotNode = new DotNode()
-        .WithIdentifier(toNodeId)
-        .WithLabel(toNodeId)
-        .WithShape("box");
-
-      subgraph.Add(fromDotNode);
-      subgraph.Add(toDotNode);
-
-      // Add edge
-      var dotEdge = new DotEdge()
-        .From(fromNodeId)
-        .To(toNodeId)
-        .WithLabel("x");
-
-      subgraph.Add(dotEdge);
-    }
-
-    subgraph.Add(new DotEdge()
-      .From("first")
-      .To("0")
-      .WithLabel("x")
-    );
-
-    await using var writer = new StringWriter();
-    var context = new CompilationContext(writer, new CompilationOptions());
-    await graph.CompileAsync(context);
-    return writer.GetStringBuilder().ToString();
-  }
-
-  private static DotSubgraph ToDotSubgraph(IPipeline pipeline)
-  {
-    var subgraph = new DotSubgraph().WithIdentifier(pipeline.Id);
-
-    return subgraph;
+    return _graphvizExporter.ExportAsync(this); 
   }
 
   private IList<PipelineBlock> GetLastBlocks()
