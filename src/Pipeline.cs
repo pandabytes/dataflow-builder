@@ -1,3 +1,7 @@
+using DotNetGraph.Compilation;
+using DotNetGraph.Core;
+using DotNetGraph.Extensions;
+
 namespace DataflowBuilder;
 
 /// <summary>
@@ -6,20 +10,17 @@ namespace DataflowBuilder;
 /// <typeparam name="TPipelineFirstIn"></typeparam>
 public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
-  private readonly IList<PipelineBlock> _blocks;
+  private readonly List<PipelineBlock> _blocks;
+
+  private readonly List<IPipeline> _branchPipelines;
 
   private PipelineBuildStatus _buildStatus;
 
-  private readonly IList<IPipeline> _branchPipelines;
+  /// <inheritdoc/>
+  public IReadOnlyList<PipelineBlock> Blocks => _blocks;
 
   /// <inheritdoc/>
-  PipelineBlock IPipeline.FirstBlock => _blocks.First();
-
-  /// <inheritdoc/>
-  PipelineBlock IPipeline.LastBlock => _blocks.Last();
-
-  /// <inheritdoc/>
-  IList<IPipeline> IPipeline.BranchPipelines => _branchPipelines;
+  public IReadOnlyList<IPipeline> BranchPipelines => _branchPipelines;
 
   /// <inheritdoc/>
   void IPipeline.BeforeBuild()
@@ -38,14 +39,14 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
         throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TPipelineFirstIn, object>.AddLastBlock)} " +
                                             "to indicate pipeline is ready to be built.");
       case PipelineBuildStatus.Forked:
-        if (AsIPipeline().BranchPipelines.Count == 0)
+        if (_branchPipelines.Count == 0)
         {
           throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
         }
         break;
     }
 
-    foreach (var branchPipeline in AsIPipeline().BranchPipelines)
+    foreach (var branchPipeline in _branchPipelines)
     {
       try
       {
@@ -60,9 +61,6 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   /// <inheritdoc/>
   public string Id { get; }
-
-  /// <inheritdoc/>
-  public int BlockCount => _blocks.Count;
 
   /// <summary>
   /// Constructor.
@@ -348,10 +346,10 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       ");
     }
 
-    var firstBlockBranchPipeline = branchPipeline.AsIPipeline().FirstBlock.Value as ITargetBlock<TIn>
+    var firstBlockBranchPipeline = branchPipeline._blocks[0].Value as ITargetBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
     
-    var lastSrcBlock = AsIPipeline().LastBlock.Value as ISourceBlock<TIn>
+    var lastSrcBlock = _blocks[^1].Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link branch pipeline to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
     if (predicate is null)
@@ -363,7 +361,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       lastSrcBlock.LinkTo(firstBlockBranchPipeline, linkOptions ?? new(), predicate);
     }
 
-    ((IPipeline)this).BranchPipelines.Add(branchPipeline);
+    _branchPipelines.Add(branchPipeline);
   }
 
   internal void Broadcast<TIn>(
@@ -393,7 +391,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     }
 
     var broadcastBlock = new BroadcastBlock<TIn>(cloningFunc, pipelineBlockOptions?.BlockOptions ?? new());
-    var lastSrcBlock = AsIPipeline().LastBlock.Value as ISourceBlock<TIn>
+    var lastSrcBlock = _blocks[^1].Value as ISourceBlock<TIn>
       ?? throw new ArgumentException($"Cannot link broadcast block to the last block in the pipeline due to output type mismatch. Invalid input type: {typeof(TIn).FullName}.");
 
     lastSrcBlock.LinkTo(broadcastBlock, pipelineBlockOptions?.LinkOptions ?? new());
@@ -410,7 +408,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   /// <exception cref="InvalidOperationException"></exception>
   public PipelineRunner<TPipelineFirstIn> Build()
   {
-    AsIPipeline().BeforeBuild();
+    ((IPipeline)this).BeforeBuild();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TPipelineFirstIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TPipelineFirstIn).FullName}.");
@@ -419,6 +417,73 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
     _buildStatus = PipelineBuildStatus.Built;
     return new(firstBlock, lastBlocks);
+  }
+
+  /// <summary>
+  /// 
+  /// </summary>
+  /// <returns></returns>
+  public async Task<string> ToGraphVizAsync()
+  {
+    var graph = new DotGraph()
+      .WithIdentifier("Pipeline")
+      .WithRankDir(DotRankDir.LR)
+      .Directed();
+
+    var subgraph = new DotSubgraph()
+      .WithIdentifier("x");
+      
+    graph.Add(subgraph);
+
+    subgraph.Add(new DotNode()
+      .WithIdentifier("first")
+      .WithLabel("Start")
+    );
+
+    for (int i = 0; i < _blocks.Count - 1; i++)
+    {
+      var fromNodeId = i.ToString();
+      var toNodeId = (i + 1).ToString();
+
+      var fromDotNode = new DotNode()
+        .WithIdentifier(fromNodeId)
+        .WithLabel(fromNodeId)
+        .WithShape("box");
+
+      var toDotNode = new DotNode()
+        .WithIdentifier(toNodeId)
+        .WithLabel(toNodeId)
+        .WithShape("box");
+
+      subgraph.Add(fromDotNode);
+      subgraph.Add(toDotNode);
+
+      // Add edge
+      var dotEdge = new DotEdge()
+        .From(fromNodeId)
+        .To(toNodeId)
+        .WithLabel("x");
+
+      subgraph.Add(dotEdge);
+    }
+
+    subgraph.Add(new DotEdge()
+      .From("first")
+      .To("0")
+      .WithLabel("x")
+    );
+
+    await using var writer = new StringWriter();
+    var context = new CompilationContext(writer, new CompilationOptions());
+    await graph.CompileAsync(context);
+    return writer.GetStringBuilder().ToString();
+  }
+
+  private static DotSubgraph ToDotSubgraph(IPipeline pipeline)
+  {
+    var subgraph = new DotSubgraph().WithIdentifier(pipeline.Id);
+
+    return subgraph;
   }
 
   private IList<PipelineBlock> GetLastBlocks()
@@ -431,7 +496,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     {
       if (!currentPipeline.BranchPipelines.Any())
       {
-        leafBlocks.Add(currentPipeline.LastBlock);
+        leafBlocks.Add(currentPipeline.Blocks[^1]);
         return;
       }
 
@@ -441,8 +506,6 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       }
     }
   }
-
-  private IPipeline AsIPipeline() => this;
 
   private static bool IsAsync(Type type)
   {

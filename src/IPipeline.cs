@@ -1,36 +1,28 @@
 namespace DataflowBuilder;
 
-internal interface IPipeline
+/// <summary>
+/// Pipeline interface.
+/// </summary>
+public interface IPipeline
 {
   /// <summary>
-  /// Id of a pipeline.
+  /// Id of the pipeline.
   /// </summary>
   string Id { get; }
 
   /// <summary>
-  /// Number of blocks in the pipeline, excluding
-  /// blocks from branch pipelines.
+  /// Blocks in the pipeline.
   /// </summary>
-  int BlockCount { get; }
-  
-  /// <summary>
-  /// First block in the pipeline.
-  /// </summary>
-  PipelineBlock FirstBlock { get; }
-
-  /// <summary>
-  /// Last block in the pipeline.
-  /// </summary>
-  PipelineBlock LastBlock { get; }
+  IReadOnlyList<PipelineBlock> Blocks { get; }
 
   /// <summary>
   /// List of branch pipelines that this
   /// pipeline has forked into.
   /// </summary>
-  IList<IPipeline> BranchPipelines { get; }
+  IReadOnlyList<IPipeline> BranchPipelines { get; }
 
   /// <summary>
   /// Get called before a pipeline is built.
   /// </summary>
-  void BeforeBuild();
+  internal void BeforeBuild();
 }

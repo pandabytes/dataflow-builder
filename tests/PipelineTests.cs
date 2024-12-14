@@ -44,7 +44,7 @@ public class PipelineTests
     pipeline.AddFirstBlock(x => x);
     
     // Assert
-    Assert.NotNull((pipeline as IPipeline).FirstBlock);
+    Assert.NotNull(pipeline.Blocks[0]);
   }
 
   #endregion
@@ -72,7 +72,7 @@ public class PipelineTests
     pipeline.AddFirstAsyncBlock(x => Task.FromResult(x));
     
     // Assert
-    Assert.NotNull((pipeline as IPipeline).FirstBlock);
+    Assert.NotNull(pipeline.Blocks[0]);
   }
 
   #endregion
@@ -112,7 +112,7 @@ public class PipelineTests
     pipeline.AddBlock<object, Task<object>>(x => Task.FromResult(x), allowTaskOutput: true);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -126,7 +126,7 @@ public class PipelineTests
     pipeline.AddBlock<string, int>(int.Parse);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -140,7 +140,7 @@ public class PipelineTests
     pipeline.AddBlock<string, int>(int.Parse);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -168,7 +168,7 @@ public class PipelineTests
     pipeline.AddAsyncBlock<string, int>(x => Task.FromResult(0));
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -182,7 +182,7 @@ public class PipelineTests
     pipeline.AddAsyncBlock<string, int>(x => Task.FromResult(0));
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -210,7 +210,7 @@ public class PipelineTests
     pipeline.AddManyBlock<string, char>(x => [..x]);
 
     // Assert
-    Assert.Equal(2, pipeline.BlockCount);
+    Assert.Equal(2, pipeline.Blocks.Count);
   }
 
   #endregion
@@ -238,7 +238,7 @@ public class PipelineTests
     pipeline.AddLastBlock<string>(x => {});
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -252,7 +252,7 @@ public class PipelineTests
     pipeline.AddLastBlock<string>(x => {});
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -280,7 +280,7 @@ public class PipelineTests
     pipeline.AddLastAsyncBlock<string>(x => Task.CompletedTask);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -294,7 +294,7 @@ public class PipelineTests
     pipeline.AddLastAsyncBlock<string>(x => Task.CompletedTask);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -396,7 +396,7 @@ public class PipelineTests
     pipeline.Broadcast<string>();
 
     // Assert
-    Assert.Equal(2, pipeline.BlockCount);
+    Assert.Equal(2, pipeline.Blocks.Count);
   }
 
   #endregion
