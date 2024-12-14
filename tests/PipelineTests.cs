@@ -1,14 +1,16 @@
+using DataflowBuilder.Exporters;
+
 namespace DataflowBuilder.Tests;
 
 public class PipelineTests
 {
   [Theory]
   [InlineData("")]
-  [InlineData(null)]
+  [InlineData(null!)]
 
-  public void Constructor_InvalidId_ThrowsException(string id)
+  public void Constructor_InvalidId_ThrowsException(string? id)
   {
-    Assert.Throws<ArgumentException>(() => new Pipeline<object>(id));
+    Assert.Throws<ArgumentException>(() => new Pipeline<object>(id!));
   }
 
   #region AddFirstBlock
@@ -44,7 +46,7 @@ public class PipelineTests
     pipeline.AddFirstBlock(x => x);
     
     // Assert
-    Assert.NotNull((pipeline as IPipeline).FirstBlock);
+    Assert.NotNull(pipeline.Blocks[0]);
   }
 
   #endregion
@@ -72,7 +74,7 @@ public class PipelineTests
     pipeline.AddFirstAsyncBlock(x => Task.FromResult(x));
     
     // Assert
-    Assert.NotNull((pipeline as IPipeline).FirstBlock);
+    Assert.NotNull(pipeline.Blocks[0]);
   }
 
   #endregion
@@ -112,7 +114,7 @@ public class PipelineTests
     pipeline.AddBlock<object, Task<object>>(x => Task.FromResult(x), allowTaskOutput: true);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -126,7 +128,7 @@ public class PipelineTests
     pipeline.AddBlock<string, int>(int.Parse);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -140,7 +142,7 @@ public class PipelineTests
     pipeline.AddBlock<string, int>(int.Parse);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -168,7 +170,7 @@ public class PipelineTests
     pipeline.AddAsyncBlock<string, int>(x => Task.FromResult(0));
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -182,7 +184,7 @@ public class PipelineTests
     pipeline.AddAsyncBlock<string, int>(x => Task.FromResult(0));
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -210,7 +212,7 @@ public class PipelineTests
     pipeline.AddManyBlock<string, char>(x => [..x]);
 
     // Assert
-    Assert.Equal(2, pipeline.BlockCount);
+    Assert.Equal(2, pipeline.Blocks.Count);
   }
 
   #endregion
@@ -238,7 +240,7 @@ public class PipelineTests
     pipeline.AddLastBlock<string>(x => {});
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -252,7 +254,7 @@ public class PipelineTests
     pipeline.AddLastBlock<string>(x => {});
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -280,7 +282,7 @@ public class PipelineTests
     pipeline.AddLastAsyncBlock<string>(x => Task.CompletedTask);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   [Fact]
@@ -294,7 +296,7 @@ public class PipelineTests
     pipeline.AddLastAsyncBlock<string>(x => Task.CompletedTask);
 
     // Assert
-    Assert.NotNull((pipeline as IPipeline).LastBlock);
+    Assert.NotNull(pipeline.Blocks[^1]);
   }
 
   #endregion
@@ -396,7 +398,7 @@ public class PipelineTests
     pipeline.Broadcast<string>();
 
     // Assert
-    Assert.Equal(2, pipeline.BlockCount);
+    Assert.Equal(2, pipeline.Blocks.Count);
   }
 
   #endregion
@@ -499,6 +501,48 @@ public class PipelineTests
 
     // Act & Assert
     pipeline.Build();
+  }
+
+  #endregion
+
+  #region ExportAsync
+
+  [Fact]
+  public async Task ExportAsync_ProvideCustomExporter_StringIsReturned()
+  {
+    // Arrange
+    const string expected = "mock-export";
+    var pipelineExporterMock = Substitute.For<IPipelineExporter>();
+    pipelineExporterMock
+      .ExportAsync(Arg.Any<IPipeline>(), Arg.Any<CancellationToken>())
+      .Returns(Task.FromResult(expected));
+
+    var pipeline = new Pipeline<object>("test");
+    pipeline
+      .AddFirstBlock(x => x)
+      .AddLastBlock(x => {});
+
+    // Act
+    var actual = await pipeline.ExportAsync(pipelineExporterMock);
+
+    // Assert
+    Assert.Equal(expected, actual);
+  }
+
+  [Fact]
+  public async Task ExportAsync_ProvideGraphvizExporter_StringIsReturned()
+  {
+    // Arrange
+    var pipeline = new Pipeline<object>("test");
+    pipeline
+      .AddFirstBlock(x => x)
+      .AddLastBlock(x => {});
+
+    // Act
+    var graphviz = await pipeline.ExportAsync(new GraphvizExporter());
+
+    // Assert
+    Assert.NotEmpty(graphviz);
   }
 
   #endregion

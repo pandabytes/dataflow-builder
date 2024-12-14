@@ -135,3 +135,50 @@ pipeline
 var runner = pipeline.Builder();
 await runner.ExecuteAsync(["1", "2", "3"]);
 ```
+
+## Export for Visualization
+To visualize your pipeline, use the method `pipeline.ExportAsync(<PipelineExporter>)`. You can define your own
+exporter and pass it to the method `ExportAsync`. This libary ships with `GraphvizExporter` to make it easy
+for you to get started.
+```cs
+var pipelineBlockOpts = new PipelineBlockOptions
+{
+  BlockOptions = new() { MaxDegreeOfParallelism = 1 },
+  LinkOptions = new() { PropagateCompletion = true }
+};
+
+var fbEvenPipeline = new Pipeline<int>("fb-even");
+fbEvenPipeline
+  .AddFirstBlock(number => number)
+  .AddLastBlock(number => Console.WriteLine($"fb-even: {number}"), pipelineBlockOpts);
+
+var fbOddPipeline = new Pipeline<int>("fb-odd");
+fbOddPipeline
+  .AddFirstBlock(number => number)
+  .AddLastBlock(number => Console.WriteLine($"fb-odd: {number}"), pipelineBlockOpts);
+
+var fbPipeline = new Pipeline<int>("fb");
+fbPipeline
+  .AddFirstBlock(number => number)
+  .Fork()
+    .Branch(number => number % 2 == 0, fbEvenPipeline, pipelineBlockOpts.LinkOptions)
+    .Default(fbOddPipeline, pipelineBlockOpts.LinkOptions);
+
+var twitterPipeline = new Pipeline<int>("twitter");
+twitterPipeline
+  .AddFirstBlock(number => number)
+  .AddLastBlock(number => Console.WriteLine($"TWITTER: {number}"), pipelineBlockOpts);
+
+var pipeline = new Pipeline<string>("test");
+pipeline
+  .AddFirstBlock(int.Parse)
+  .Broadcast(null, pipelineBlockOpts)
+    .Branch(fbPipeline, pipelineBlockOpts.LinkOptions)
+    .Branch(twitterPipeline, pipelineBlockOpts.LinkOptions);
+
+// Copy the output and visualize it in https://magjac.com/graphviz-visual-editor/
+System.Console.WriteLine(await pipeline.ExportAsync(new GraphvizExporter()));
+```
+
+This is the visualize of the pipeline above.
+![Image](./docs/pipeline_graphviz.png)
