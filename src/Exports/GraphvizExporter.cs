@@ -102,9 +102,14 @@ internal class GraphvizExporter
     foreach (var branchPipeline in pipeline.BranchPipelines)
     {
       var (firstBranchNodeId, _) = AddSubgraphRecursively(branchPipeline, graph, pipelineNumber++);
+
+      // Connect the last block from current pipeline to
+      // the first block of the next pipeline
+      var (inputTypeName, _) = GetBlockTypeNames(branchPipeline.Blocks[0].Value);
       graph.Add(new DotEdge()
         .From(lastNodeId)
         .To(firstBranchNodeId)
+        .WithLabel(inputTypeName)
       );
     }
 
