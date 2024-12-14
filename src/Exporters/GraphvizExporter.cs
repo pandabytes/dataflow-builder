@@ -1,3 +1,4 @@
+using DotNetGraph.Attributes;
 using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;
@@ -16,6 +17,9 @@ public sealed class GraphvizExporter : IPipelineExporter
       .WithIdentifier("Pipeline")
       .WithRankDir(DotRankDir.LR)
       .Directed();
+
+    // Add legend subgraph
+    graph.Add(GetLegendSubgraph());
 
     var (firstNodeId, _) = AddSubgraphRecursively(pipeline, graph, 0);
 
@@ -116,6 +120,35 @@ public sealed class GraphvizExporter : IPipelineExporter
     }
 
     return (firstNodeId, lastNodeId);
+  }
+
+  /// <summary>
+  /// See https://stackoverflow.com/questions/3499056/making-a-legend-key-in-graphviz
+  /// </summary>
+  private static DotSubgraph GetLegendSubgraph()
+  {
+    var edgeLabelAttrb = new DotAttribute(@"
+      key [label=<<table border=""0"" cellpadding=""2"" cellspacing=""0"" cellborder=""0"">
+        <tr><td align=""right"" port=""broadcast"">Broadcast</td></tr>
+        <tr><td align=""right"" port=""fork"">Fork</td></tr>
+      </table>>]
+    ");
+
+    var edgeAttrb = new DotAttribute(@"
+      key2 [label=<<table border=""0"" cellpadding=""2"" cellspacing=""0"" cellborder=""0"">
+        <tr><td port=""broadcast"">&nbsp;</td></tr>
+        <tr><td port=""fork"">&nbsp;</td></tr>
+      </table>>]
+    ");
+
+    return new DotSubgraph()
+      .WithIdentifier("cluster_legend")
+      .WithLabel("Legend")
+      .Add(new DotAttribute("node [shape=plaintext]"))
+      .Add(edgeLabelAttrb)
+      .Add(edgeAttrb)
+      .Add(new DotAttribute("key:broadcast:e -> key2:broadcast:w [color=red]"))
+      .Add(new DotAttribute("key:fork:e -> key2:fork:w [color=blue]"));
   }
 
   private static string GetDotNodeId(string pipelineId, string blockId)

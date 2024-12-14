@@ -3,8 +3,6 @@ using DataflowBuilder.Exporters;
 namespace DataflowBuilder;
 
 // TODO: prevent cyclic branch pipelines 
-// TODO: consider using DI?
-// TODO: add graphviz legend
 
 /// <summary>
 /// Pipeline consisting of TPL Dataflow blocks.
