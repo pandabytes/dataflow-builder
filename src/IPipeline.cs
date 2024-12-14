@@ -1,3 +1,5 @@
+using DataflowBuilder.Exporters;
+
 namespace DataflowBuilder;
 
 /// <summary>
@@ -20,6 +22,14 @@ public interface IPipeline
   /// pipeline has forked into.
   /// </summary>
   IReadOnlyList<IPipeline> BranchPipelines { get; }
+
+  /// <summary>
+  /// Export the pipeline into a string representation
+  /// based off of <paramref name="pipelineExporter"/>.
+  /// </summary>
+  /// <param name="pipelineExporter">Pipeline exporter.</param>
+  /// <returns>Pipeline string representation.</returns>
+  Task<string> ExportAsync(IPipelineExporter pipelineExporter);
 
   /// <summary>
   /// Get called before a pipeline is built.

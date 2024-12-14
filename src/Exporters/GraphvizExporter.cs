@@ -2,14 +2,14 @@ using DotNetGraph.Compilation;
 using DotNetGraph.Core;
 using DotNetGraph.Extensions;
 
-namespace DataflowBuilder.Exports;
+namespace DataflowBuilder.Exporters;
 
-internal class GraphvizExporter
+/// <summary>
+/// Export pipeline into graphviz format.
+/// </summary>
+public sealed class GraphvizExporter : IPipelineExporter
 {
-  /// <summary>
-  /// 
-  /// </summary>
-  /// <returns></returns>
+  /// <inheritdoc/>
   public async Task<string> ExportAsync(IPipeline pipeline)
   {
     var graph = new DotGraph()

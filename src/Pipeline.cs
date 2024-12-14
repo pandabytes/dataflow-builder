@@ -1,6 +1,10 @@
-using DataflowBuilder.Exports;
+using DataflowBuilder.Exporters;
 
 namespace DataflowBuilder;
+
+// TODO: prevent cyclic branch pipelines 
+// TODO: consider using DI?
+// TODO: add graphviz legend
 
 /// <summary>
 /// Pipeline consisting of TPL Dataflow blocks.
@@ -8,7 +12,6 @@ namespace DataflowBuilder;
 /// <typeparam name="TPipelineFirstIn"></typeparam>
 public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
-  // TODO: consider using DI?
   private readonly GraphvizExporter _graphvizExporter;
 
   private readonly List<PipelineBlock> _blocks;
@@ -421,14 +424,9 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     return new(firstBlock, lastBlocks);
   }
 
-  /// <summary>
-  /// Get Graphviz representation.
-  /// </summary>
-  /// <returns>Graphviz string representation.</returns>
-  public Task<string> ToGraphVizAsync()
-  {
-    return _graphvizExporter.ExportAsync(this); 
-  }
+  /// <inheritdoc/>
+  public Task<string> ExportAsync(IPipelineExporter pipelineExporter)
+    => pipelineExporter.ExportAsync(this);
 
   private IList<PipelineBlock> GetLastBlocks()
   {
