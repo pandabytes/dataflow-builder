@@ -47,39 +47,37 @@ internal class GraphvizExporter
       .WithLabel(pipeline.Id)
       .WithIdentifier($"cluster_{pipelineNumber}_{pipeline.Id}");
 
-    // Add nodes and edges in the pipeline
-    for (int i = 0; i < pipeline.Blocks.Count - 1; i++)
+    // Add all blocks as nodes to subgraph
+    var nodeIds = Enumerable
+      .Range(0, pipeline.Blocks.Count)
+      .Select(index =>
+      {
+        var nodeId = GetDotNodeId(pipeline.Id, index.ToString());
+        subgraph.Add(new DotNode()
+          .WithIdentifier(nodeId)
+          .WithLabel(index.ToString())
+          .WithShape("box")
+        );
+        return nodeId;
+      })
+      .ToList();
+
+    // Add edge between 2 adjacent blocks
+    for (int i = 0; i < nodeIds.Count - 1; i++)
     {
-      var fromNodeId = GetDotNodeId(pipeline.Id, i.ToString());
-      var toNodeId = GetDotNodeId(pipeline.Id, (i + 1).ToString());
+      var fromNodeId = nodeIds[i];
+      var toNodeId = nodeIds[i + 1];
 
-      var fromDotNode = new DotNode()
-        .WithIdentifier(fromNodeId)
-        .WithLabel(i.ToString())
-        .WithShape("box");
-
-      var toDotNode = new DotNode()
-        .WithIdentifier(toNodeId)
-        .WithLabel((i + 1).ToString())
-        .WithShape("box");
-
-      subgraph.Add(fromDotNode);
-      subgraph.Add(toDotNode);
-
-      // Add edge
       var (_, outputTypeName) = GetBlockTypeNames(pipeline.Blocks[i].Value);
-      var dotEdge = new DotEdge()
+      subgraph.Add(new DotEdge()
         .From(fromNodeId)
         .To(toNodeId)
         // Label is the output type of the previous block
-        .WithLabel(outputTypeName);
-
-      subgraph.Add(dotEdge);
+        .WithLabel(outputTypeName)
+      );
     }
 
-    var firstNodeId = GetDotNodeId(pipeline.Id, "0");
-    var lastNodeId = GetDotNodeId(pipeline.Id, (pipeline.Blocks.Count - 1).ToString());
-    return (firstNodeId, lastNodeId, subgraph);
+    return (nodeIds[0], nodeIds[^1], subgraph);
   }
 
   /// <summary>
