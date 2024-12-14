@@ -68,7 +68,9 @@ internal class GraphvizExporter
       var fromNodeId = nodeIds[i];
       var toNodeId = nodeIds[i + 1];
 
-      var (_, outputTypeName) = GetBlockTypeNames(pipeline.Blocks[i].Value);
+      var block = pipeline.Blocks[i].Value;
+      var (_, outputTypeName) = GetBlockTypeNames(block);
+
       subgraph.Add(new DotEdge()
         .From(fromNodeId)
         .To(toNodeId)
@@ -97,6 +99,7 @@ internal class GraphvizExporter
     var (firstNodeId, lastNodeId, subgraph) = ToDotSubgraph(pipeline, pipelineNumber);
     graph.Add(subgraph);
 
+    var edgeColor = GetEdgeColorBetweenTwoPipelines(pipeline.Blocks[^1].Value);
     foreach (var branchPipeline in pipeline.BranchPipelines)
     {
       var (firstBranchNodeId, _) = AddSubgraphRecursively(branchPipeline, graph, pipelineNumber++);
@@ -108,6 +111,7 @@ internal class GraphvizExporter
         .From(lastNodeId)
         .To(firstBranchNodeId)
         .WithLabel(inputTypeName)
+        .WithColor(edgeColor)
       );
     }
 
@@ -152,5 +156,25 @@ internal class GraphvizExporter
     }
 
     throw new NotSupportedException($"{blockType} not supported.");
+  }
+
+  /// <summary>
+  /// Get the edge color between 2 pipelines.
+  /// If the first pipeline ends with a <see cref="BroadcastBlock{T}"/>
+  /// then color is red. Else it's blue.
+  /// </summary>
+  /// <param name="block"></param>
+  /// <returns></returns>
+  private static string GetEdgeColorBetweenTwoPipelines(IDataflowBlock block)
+  {
+    var blockType = block.GetType();
+    var blockGenericTypeDef = blockType.GetGenericTypeDefinition();
+
+    if (blockGenericTypeDef == typeof(BroadcastBlock<>))
+    {
+      return "red";
+    }
+
+    return "blue";
   }
 }
