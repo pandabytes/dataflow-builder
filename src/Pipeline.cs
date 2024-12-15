@@ -16,7 +16,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   private readonly List<IPipeline> _branchPipelines;
 
-  private PipelineBuildStatus _buildStatus;
+  private PipelineBuildState _buildState;
 
   /// <inheritdoc/>
   public IReadOnlyList<PipelineBlock> Blocks => _blocks;
@@ -32,15 +32,15 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       throw new InvalidOperationException("Pipeline does not have any block defined.");
     }
 
-    switch (_buildStatus)
+    switch (_buildState)
     {
-      case PipelineBuildStatus.Built:
+      case PipelineBuildState.Built:
         throw new InvalidOperationException($"Pipeline already built. Please create a new " +
                                             $"{nameof(Pipeline<TPipelineFirstIn>)} to build a new pipeline.");
-      case PipelineBuildStatus.Progress:
+      case PipelineBuildState.Progress:
         throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TPipelineFirstIn, object>.AddLastBlock)} " +
                                             "to indicate pipeline is ready to be built.");
-      case PipelineBuildStatus.Forked:
+      case PipelineBuildState.Forked:
         if (_branchPipelines.Count == 0)
         {
           throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
@@ -79,7 +79,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     Id = id;
     _blocks = new List<PipelineBlock>();
     _branchPipelines = new List<IPipeline>();
-    _buildStatus = PipelineBuildStatus.Progress;
+    _buildState = PipelineBuildState.Progress;
     _graphvizExporter = new();
   }
 
@@ -281,7 +281,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       _blocks.Add(new() { Value = newBlock, IsBlockAsync = false });
     }       
 
-    _buildStatus = PipelineBuildStatus.ReadyForBuild;
+    _buildState = PipelineBuildState.ReadyForBuild;
   }
 
   internal void AddLastAsyncBlock<TIn>(
@@ -314,10 +314,10 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
       _blocks.Add(new() { Value = newBlock, IsBlockAsync = true });
     }       
 
-    _buildStatus = PipelineBuildStatus.ReadyForBuild;
+    _buildState = PipelineBuildState.ReadyForBuild;
   }
 
-  internal void Fork() => _buildStatus = PipelineBuildStatus.Forked;
+  internal void Fork() => _buildState = PipelineBuildState.Forked;
 
   internal void BranchOrDefault<TIn>(
     Pipeline<TIn> branchPipeline,
@@ -400,7 +400,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     lastSrcBlock.LinkTo(broadcastBlock, pipelineBlockOptions?.LinkOptions ?? new());
     _blocks.Add(new() { Value = broadcastBlock, IsBlockAsync = false });
 
-    _buildStatus = PipelineBuildStatus.Forked;
+    _buildState = PipelineBuildState.Forked;
   }
 
   /// <summary>
@@ -418,7 +418,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
     var lastBlocks = GetLastBlocks().Select(block => block.Value);
 
-    _buildStatus = PipelineBuildStatus.Built;
+    _buildState = PipelineBuildState.Built;
     return new(firstBlock, lastBlocks);
   }
 
