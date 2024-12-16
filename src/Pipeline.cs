@@ -1,8 +1,7 @@
 using DataflowBuilder.Exporters;
+using DataflowBuilder.Runners;
 
 namespace DataflowBuilder;
-
-// TODO: prevent cyclic branch pipelines 
 
 /// <summary>
 /// Pipeline consisting of TPL Dataflow blocks.
@@ -25,41 +24,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   public IReadOnlyList<IPipeline> BranchPipelines => _branchPipelines;
 
   /// <inheritdoc/>
-  void IPipeline.BeforeBuild()
-  {
-    if (_blocks.Count == 0)
-    {
-      throw new InvalidOperationException("Pipeline does not have any block defined.");
-    }
-
-    switch (_buildState)
-    {
-      case PipelineBuildState.Built:
-        throw new InvalidOperationException($"Pipeline already built. Please create a new " +
-                                            $"{nameof(Pipeline<TPipelineFirstIn>)} to build a new pipeline.");
-      case PipelineBuildState.Progress:
-        throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TPipelineFirstIn, object>.AddLastBlock)} " +
-                                            "to indicate pipeline is ready to be built.");
-      case PipelineBuildState.Forked:
-        if (_branchPipelines.Count == 0)
-        {
-          throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
-        }
-        break;
-    }
-
-    foreach (var branchPipeline in _branchPipelines)
-    {
-      try
-      {
-        branchPipeline.BeforeBuild();
-      }
-      catch (Exception ex)
-      {
-        throw new InvalidOperationException($"Branch pipeline \"{branchPipeline.Id}\" failed to be built.", ex);
-      }
-    }
-  }
+  IPipelineRunner IPipeline.Build() => Build();
 
   /// <inheritdoc/>
   public string Id { get; }
@@ -411,7 +376,8 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   /// <exception cref="InvalidOperationException"></exception>
   public PipelineRunner<TPipelineFirstIn> Build()
   {
-    ((IPipeline)this).BeforeBuild();
+    ValidateBeforeBuild();
+    BuildBranchPipelines();
 
     var firstBlock = _blocks.First().Value as ITargetBlock<TPipelineFirstIn>
       ?? throw new InvalidOperationException($"Input type of first block must match with type {typeof(TPipelineFirstIn).FullName}.");
@@ -425,6 +391,48 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   /// <inheritdoc/>
   public Task<string> ExportAsync(IPipelineExporter pipelineExporter, CancellationToken cancellationToken = default)
     => pipelineExporter.ExportAsync(this, cancellationToken);
+
+  private void ValidateBeforeBuild()
+  {
+    if (_blocks.Count == 0)
+    {
+      throw new InvalidOperationException("Pipeline does not have any block defined.");
+    }
+
+    switch (_buildState)
+    {
+      case PipelineBuildState.Built:
+        throw new InvalidOperationException($"Pipeline \"{Id}\" already built. Please create a new " +
+                                            $"{nameof(Pipeline<TPipelineFirstIn>)} object to build a new pipeline.");
+      case PipelineBuildState.Progress:
+        throw new InvalidOperationException($"Must call {nameof(IntermediateBuildingBlock<TPipelineFirstIn, object>.AddLastBlock)} " +
+                                            "to indicate pipeline is ready to be built.");
+      case PipelineBuildState.Forked:
+        if (_branchPipelines.Count == 0)
+        {
+          throw new InvalidOperationException("Pipeline was forked but it was not provided any branch.");
+        }
+        break;
+    }
+  }
+
+  private void BuildBranchPipelines()
+  {
+    foreach (var branchPipeline in _branchPipelines)
+    {
+      try
+      {
+        // Ignore the pipeline runner built from
+        // branch pipeline. We only care about the
+        // pipeline runner built from the "root" pipeline
+        _ = branchPipeline.Build();
+      }
+      catch (Exception ex)
+      {
+        throw new InvalidOperationException($"Branch pipeline \"{branchPipeline.Id}\" failed to be built.", ex);
+      }
+    }
+  }
 
   private IList<PipelineBlock> GetLastBlocks()
   {
