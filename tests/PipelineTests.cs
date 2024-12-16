@@ -501,6 +501,29 @@ public class PipelineTests
 
     // Act & Assert
     pipeline.Build();
+
+    // Assert all branch piplines cannot be built because
+    // pipeline.Build builds all connected pipelines
+    Assert.Throws<InvalidOperationException>(branchPipeline1.Build);
+    Assert.Throws<InvalidOperationException>(branchPipeline2.Build);
+  }
+
+  [Fact]
+  public void Build_WithBadBranchPipelines_BranchPipelineThrowsException()
+  {
+    // Arrange
+    var branchPipeline = new Pipeline<int>("branch-4");
+    branchPipeline.AddFirstBlock(x => x);
+
+    var pipeline = new Pipeline<string>("test");
+    pipeline
+      .AddFirstBlock(int.Parse)
+      .Fork()
+        .Default(branchPipeline);
+
+    // Act & Assert
+    var ex = Assert.Throws<InvalidOperationException>(pipeline.Build);
+    Assert.Contains(branchPipeline.Id, ex.Message);
   }
 
   #endregion
