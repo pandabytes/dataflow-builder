@@ -1,4 +1,5 @@
 using DataflowBuilder.Exporters;
+using DataflowBuilder.Runners;
 
 namespace DataflowBuilder;
 
@@ -33,7 +34,8 @@ public interface IPipeline
   Task<string> ExportAsync(IPipelineExporter pipelineExporter, CancellationToken cancellationToken = default);
 
   /// <summary>
-  /// Get called before a pipeline is built.
+  /// Build the pipeline and return
+  /// a pipeline runner object.
   /// </summary>
-  internal void BeforeBuild();
+  internal IPipelineRunner Build();
 }

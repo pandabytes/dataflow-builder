@@ -1,3 +1,6 @@
+using System.Threading.Tasks.Dataflow;
+using DataflowBuilder.Runners;
+
 namespace DataflowBuilder.Tests;
 
 public class PipelineRunnerTests
@@ -9,7 +12,59 @@ public class PipelineRunnerTests
   };
 
   [Fact]
-  public async Task ExecuteAsync_SimplePipeline()
+  public async Task ExecuteAsync_IEnumerableInput_PipelineAlreadyRan_ThrowsException()
+  {
+    // Arrange
+    var firstBlock = Substitute.For<ITargetBlock<object>>();
+    var lastBlock = Substitute.For<IDataflowBlock>();
+    var asyncInputs = GetAsyncEnumerable<object>([0, string.Empty]);
+    var pipelineRunner = new PipelineRunner<object>(firstBlock, [lastBlock]);
+
+    // Act
+    await pipelineRunner.ExecuteAsync([0, string.Empty]);
+
+    // Assert
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([]));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs));
+  }
+
+  [Fact]
+  public async Task ExecuteAsync_IAsyncEnumerableInput_PipelineAlreadyRan_ThrowsException()
+  {
+    // Arrange
+    var firstBlock = Substitute.For<ITargetBlock<object>>();
+    var lastBlock = Substitute.For<IDataflowBlock>();
+    var asyncInputs = GetAsyncEnumerable<object>([0, string.Empty]);
+    var pipelineRunner = new PipelineRunner<object>(firstBlock, [lastBlock]);
+
+    // Act
+    await pipelineRunner.ExecuteAsync(asyncInputs);
+
+    // Assert
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([]));
+  }
+
+  [Fact]
+  public async Task ExecuteAsync_IEnumerableInput_SimplePipelineWithNoInputs()
+  {
+    // Arrange
+    var results = new List<int>();
+    var pipeline = new Pipeline<string>("test");
+    pipeline
+      .AddFirstBlock(int.Parse)
+      .AddLastBlock(results.Add, _pipelineBlockOpts);
+
+    // Act
+    var pipelineRunner = pipeline.Build();
+    await pipelineRunner.ExecuteAsync([]);
+
+    // Assert
+    Assert.Equal([], results);
+  }
+
+  [Fact]
+  public async Task ExecuteAsync_IEnumerableInput_SimplePipelineWithInputs()
   {
     // Arrange
     var results = new List<int>();
@@ -29,7 +84,7 @@ public class PipelineRunnerTests
   }
 
   [Fact]
-  public async Task ExecuteAsync_SimplePipelineWithAsync()
+  public async Task ExecuteAsync_IEnumerableInput_SimplePipelineWithAsync()
   {
     // Arrange
     var results = new List<int>();
@@ -53,7 +108,7 @@ public class PipelineRunnerTests
   }
 
   [Fact]
-  public async Task ExecuteAsync_SimplePipelineWithBranches()
+  public async Task ExecuteAsync_IEnumerableInput_SimplePipelineWithBranches()
   {
     // Arrange
     var evenNumbers = new List<int>();
@@ -92,7 +147,7 @@ public class PipelineRunnerTests
   }
 
   [Fact]
-  public async Task ExecuteAsync_SimplePipelineWithBroadcast()
+  public async Task ExecuteAsync_IEnumerableInput_SimplePipelineWithBroadcast()
   {
     // Arrange
     var b1Results = new List<int>();
@@ -123,5 +178,15 @@ public class PipelineRunnerTests
     // Assert
     Assert.Equal([2, 3, 4], b1Results);
     Assert.Equal([2, 3, 4], b2Results);
+  }
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+    private static async IAsyncEnumerable<T> GetAsyncEnumerable<T>(IEnumerable<T> items)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+    {
+    foreach (var item in items)
+    {
+      yield return item;
+    }
   }
 }

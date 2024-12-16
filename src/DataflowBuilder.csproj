@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="DotNetGraph" Version="3.2.0" PrivateAssets="compile" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" PrivateAssets="compile" />
   </ItemGroup>
 
 </Project>

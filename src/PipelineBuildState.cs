@@ -1,6 +1,6 @@
 namespace DataflowBuilder;
 
-internal enum PipelineBuildStatus
+internal enum PipelineBuildState
 {
   /// <summary>
   /// Pipeline is being built.
