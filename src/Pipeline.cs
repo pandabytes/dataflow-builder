@@ -374,7 +374,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
   /// </summary>
   /// <returns>A pipeline runner object.</returns>
   /// <exception cref="InvalidOperationException"></exception>
-  public PipelineRunner<TPipelineFirstIn> Build()
+  public BasePipelineRunner<TPipelineFirstIn> Build()
   {
     ValidateBeforeBuild();
     BuildBranchPipelines();
@@ -385,7 +385,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     var lastBlocks = GetLastBlocks().Select(block => block.Value);
 
     _buildState = PipelineBuildState.Built;
-    return new(firstBlock, lastBlocks);
+    return new PipelineRunner<TPipelineFirstIn>(firstBlock, lastBlocks);
   }
 
   /// <inheritdoc/>

@@ -11,8 +11,7 @@ public abstract class BasePipelineRunner<TIn> : IPipelineRunner
   {
     try
     {
-      var castInputs = inputs.Cast<TIn>();
-      await ExecuteAsync(castInputs, cancellationToken).NoState();
+      await ExecuteAsync(inputs.Cast<TIn>(), cancellationToken).NoState();
     }
     catch (InvalidCastException ex)
     {
@@ -25,8 +24,7 @@ public abstract class BasePipelineRunner<TIn> : IPipelineRunner
   {
     try
     {
-      var castInputs = inputs.Cast<TIn>();
-      await ExecuteAsync(castInputs, cancellationToken).NoState();
+      await ExecuteAsync(inputs.Cast<TIn>(), cancellationToken).NoState();
     }
     catch (InvalidCastException ex)
     {

@@ -1,6 +1,7 @@
 namespace DataflowBuilder.Runners;
 
 /// <summary>
+/// Interface for running a pipeline.
 /// </summary>
 public interface IPipelineRunner
 {

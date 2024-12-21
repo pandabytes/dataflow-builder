@@ -21,11 +21,11 @@ public class PipelineRunnerTests
     var pipelineRunner = new PipelineRunner<object>(firstBlock, [lastBlock]);
 
     // Act
-    await pipelineRunner.ExecuteAsync([0, string.Empty]);
+    await pipelineRunner.ExecuteAsync([0, string.Empty], default);
 
     // Assert
-    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([]));
-    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([], default));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs, default));
   }
 
   [Fact]
@@ -38,11 +38,11 @@ public class PipelineRunnerTests
     var pipelineRunner = new PipelineRunner<object>(firstBlock, [lastBlock]);
 
     // Act
-    await pipelineRunner.ExecuteAsync(asyncInputs);
+    await pipelineRunner.ExecuteAsync(asyncInputs, default);
 
     // Assert
-    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs));
-    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([]));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync(asyncInputs, default));
+    await Assert.ThrowsAsync<InvalidOperationException>(() => pipelineRunner.ExecuteAsync([], default));
   }
 
   [Fact]
@@ -181,11 +181,12 @@ public class PipelineRunnerTests
   }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-    private static async IAsyncEnumerable<T> GetAsyncEnumerable<T>(IEnumerable<T> items)
+    private static async IAsyncEnumerable<T> GetAsyncEnumerable<T>(IEnumerable<T> items, int delay = 0)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
     {
     foreach (var item in items)
     {
+      await Task.Delay(delay);
       yield return item;
     }
   }
