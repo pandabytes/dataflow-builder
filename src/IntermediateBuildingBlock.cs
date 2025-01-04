@@ -26,12 +26,12 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// Else, disallow <see cref="Task"/> to be the output type and throw
   /// an exception if <see cref="Task"/> is specified as the output type.
   /// To return <see cref="Task"/>, please use the method
-  /// <see cref="AddAsyncBlock{TOut}(Func{TIn, Task{TOut}}, PipelineBlockOptions?)"/>
+  /// <see cref="AddAsyncBlock{TOut}(Func{TIn, Task{TOut}}, PipelineBlockOptions{ExecutionDataflowBlockOptions}?)"/> 
   /// instead.
   /// </param>
   public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddBlock<TOut>(
     Func<TIn, TOut> func,
-    PipelineBlockOptions? pipelineBlockOptions = null,
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null,
     bool allowTaskOutput = false
   )
   {
@@ -51,7 +51,7 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
   public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddAsyncBlock<TOut>(
     Func<TIn, Task<TOut>> func, 
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     Pipeline.AddAsyncBlock(func, pipelineBlockOptions);
@@ -69,7 +69,7 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
   public IntermediateBuildingBlock<TPipelineFirstIn, TOut> AddManyBlock<TOut>(
     Func<TIn, IEnumerable<TOut>> func,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     Pipeline.AddManyBlock(func, pipelineBlockOptions);
@@ -82,10 +82,10 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// </summary>
   /// <param name="action">The logic of this block.</param>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
-  public void AddLastBlock(Action<TIn> action, PipelineBlockOptions? pipelineBlockOptions = null)
-  {
-    Pipeline.AddLastBlock(action, pipelineBlockOptions);
-  }
+  public void AddLastBlock(
+    Action<TIn> action,
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
+  ) => Pipeline.AddLastBlock(action, pipelineBlockOptions);
 
   /// <summary>
   /// Add the last asynchronous block to the pipeline, indicating the pipeline
@@ -93,10 +93,10 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// </summary>
   /// <param name="func">The logic of this block.</param>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
-  public void AddLastAsyncBlock(Func<TIn, Task> func, PipelineBlockOptions? pipelineBlockOptions = null)
-  {
-    Pipeline.AddLastAsyncBlock(func, pipelineBlockOptions);
-  }
+  public void AddLastAsyncBlock(
+    Func<TIn, Task> func,
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
+  ) => Pipeline.AddLastAsyncBlock(func, pipelineBlockOptions);
 
   /// <summary>
   /// Fork a pipeline into multiple branch pipelines.
@@ -115,7 +115,10 @@ public sealed class IntermediateBuildingBlock<TPipelineFirstIn, TIn>
   /// <param name="cloningFunc">The function to use to clone the data when offered to other blocks.</param>
   /// <param name="pipelineBlockOptions">Pipeline block options.</param>
   /// <returns>An object that allows connecting to branch pipelines.</returns>
-  public IntermediateBroadcastBlock<TPipelineFirstIn, TIn> Broadcast(Func<TIn, TIn>? cloningFunc = null, PipelineBlockOptions? pipelineBlockOptions = null)
+  public IntermediateBroadcastBlock<TPipelineFirstIn, TIn> Broadcast(
+    Func<TIn, TIn>? cloningFunc = null,
+    PipelineBlockOptions<DataflowBlockOptions>? pipelineBlockOptions = null
+  )
   {
     Pipeline.Broadcast(cloningFunc, pipelineBlockOptions);
     return new(Pipeline);

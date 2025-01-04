@@ -9,8 +9,6 @@ namespace DataflowBuilder;
 /// <typeparam name="TPipelineFirstIn"></typeparam>
 public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 {
-  private readonly GraphvizExporter _graphvizExporter;
-
   private readonly List<PipelineBlock> _blocks;
 
   private readonly List<IPipeline> _branchPipelines;
@@ -45,7 +43,6 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
     _blocks = new List<PipelineBlock>();
     _branchPipelines = new List<IPipeline>();
     _buildState = PipelineBuildState.Progress;
-    _graphvizExporter = new();
   }
 
   /// <summary>
@@ -107,7 +104,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void AddBlock<TIn, TOut>(
     Func<TIn, TOut> func,
-    PipelineBlockOptions? pipelineBlockOptions = null,
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null,
     bool allowTaskOutput = false
   )
   {
@@ -147,7 +144,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void AddAsyncBlock<TIn, TOut>(
     Func<TIn, Task<TOut>> func,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count == 0)
@@ -184,7 +181,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void AddManyBlock<TIn, TOut>(
     Func<TIn, IEnumerable<TOut>> func,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count == 0)
@@ -218,7 +215,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void AddLastBlock<TIn>(
     Action<TIn> action,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count == 0)
@@ -251,7 +248,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void AddLastAsyncBlock<TIn>(
     Func<TIn, Task> func,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<ExecutionDataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count == 0)
@@ -334,7 +331,7 @@ public sealed class Pipeline<TPipelineFirstIn> : IPipeline
 
   internal void Broadcast<TIn>(
     Func<TIn, TIn>? cloningFunc = null,
-    PipelineBlockOptions? pipelineBlockOptions = null
+    PipelineBlockOptions<DataflowBlockOptions>? pipelineBlockOptions = null
   )
   {
     if (_blocks.Count == 0)
