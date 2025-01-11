@@ -8,7 +8,7 @@ intuitive for consumers to use.
 # Usage
 A simple usage can be like this:
 ```cs
-var pipelineBlockOpts = new PipelineBlockOptions
+var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions>
 {
   BlockOptions = new() { MaxDegreeOfParallelism = 1 },
   LinkOptions = new() { PropagateCompletion = true }
@@ -32,7 +32,7 @@ For async operation, use `AddAsyncBlock()`. You can mix both async and sync oper
 build the pipeline. But you can only have either sync or async **first** block AND either sync
 or async **last** block.
 ```cs
-var pipelineBlockOpts = new PipelineBlockOptions
+var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions>
 {
   BlockOptions = new() { MaxDegreeOfParallelism = 1 },
   LinkOptions = new() { PropagateCompletion = true }
@@ -76,7 +76,7 @@ you can use `AddBlock` with the parameter `allowTaskOutput=true`.
 ## Fork
 This library supports "branching" off a pipeline into multiple pipelines by callling `Fork()`:
 ```cs
-var pipelineBlockOpts = new PipelineBlockOptions
+var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions>
 {
   BlockOptions = new() { MaxDegreeOfParallelism = 1 },
   LinkOptions = new() { PropagateCompletion = true }
@@ -108,7 +108,13 @@ await runner.ExecuteAsync(["1", "2", "3"]);
 ## Broadcast
 This library supports "broadcasting" which is delivering the same value to multiple branch pipelines by callling `Broadcast()`:
 ```cs
-var pipelineBlockOpts = new PipelineBlockOptions
+var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions>
+{
+  BlockOptions = new() { MaxDegreeOfParallelism = 1 },
+  LinkOptions = new() { PropagateCompletion = true }
+};
+
+var broadcastBlockOpts = new PipelineBlockOptions<DataflowBlockOptions>
 {
   BlockOptions = new() { MaxDegreeOfParallelism = 1 },
   LinkOptions = new() { PropagateCompletion = true }
@@ -127,7 +133,7 @@ twitterPipeline
 var pipeline = new Pipeline<string>("test");
 pipeline
   .AddFirstBlock(int.Parse)
-  .Broadcast(null, pipelineBlockOpts)
+  .Broadcast(null, broadcastBlockOpts)
     // For every .Branch(), the same value will be deliver to every branch pipeline
     .Branch(fbPipeline, pipelineBlockOpts.LinkOptions)
     .Branch(twitterPipeline, pipelineBlockOpts.LinkOptions);
