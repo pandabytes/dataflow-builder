@@ -44,7 +44,7 @@ jobs:
       - name: Pack library
         run: dotnet pack -c Release --output . /p:Version=${VERSION}      
       - name: Push to nuget.org
-        run: dotnet nuget push Blazor.Core.${VERSION}.nupkg --source $NUGET_SOURCE --api-key $API_KEY
+        run: dotnet nuget push DataflowBuilder.${VERSION}.nupkg --source $NUGET_SOURCE --api-key $API_KEY
         env:
           NUGET_SOURCE: https://api.nuget.org/v3/index.json
           API_KEY: ${{ secrets.NUGET_API_KEY }}
