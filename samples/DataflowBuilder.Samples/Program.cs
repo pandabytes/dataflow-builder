@@ -1,6 +1,9 @@
-﻿
-// var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
-var pipelineBlockOpts = new PipelineBlockOptions { LinkOptions = new() { PropagateCompletion = true } };
+﻿// var linkOpts = new DataflowLinkOptions { PropagateCompletion = true };
+using System.Threading.Tasks.Dataflow;
+using DataflowBuilder.Exporters;
+using DataflowBuilder.Runners;
+
+var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions> { BlockOptions = new(), LinkOptions = new() { PropagateCompletion = true } };
 var pipelineBuilder = new Pipeline<string>("A");
 
 pipelineBuilder
@@ -36,7 +39,7 @@ pipelineBuilder
   //   Thread.Sleep(1);
   //   return $"[{str}]";
   // }, pipelineBlockOpts)
-  // .AddLastBlock(Console.WriteLine, linkOptions: linkOpts)
+  .AddLastBlock(Console.WriteLine, pipelineBlockOpts)
   // .AddLastAsyncBlock(async str =>
   // {
   //   await Task.Delay(1000);
@@ -46,12 +49,44 @@ pipelineBuilder
 
 // var p = pipelineBuilder.Build();
 // await p.ExecuteAsync(["1", "3", "5"]);
+// await ((IPipelineRunner)p).ExecuteAsync([1,2,3]);
+// await ((IPipelineRunner)p).ExecuteAsync(MyAsyncEnumerable().Select(x => (object)x));
 
-await FooAsync();
+// var batchRequests = new BatchBlock<int>(batchSize: 200);
+// var sendToDb = new ActionBlock<int[]>(numbers => Console.WriteLine(string.Join(',', numbers)));
+
+// batchRequests.LinkTo(sendToDb, new() {PropagateCompletion=true});
+
+// await batchRequests.SendAsync(1);
+// await batchRequests.SendAsync(2);
+// await batchRequests.SendAsync(13);
+// batchRequests.Complete();
+
+// await sendToDb.Completion;
+// System.Console.WriteLine("Done");
+
+using var cts = new CancellationTokenSource();
+pipelineBlockOpts.BlockOptions.CancellationToken = cts.Token;
+cts.CancelAfter(2200);
+
+var p = new Pipeline<int>("x");
+p.AddFirstBlock(x => x, pipelineBlockOpts.BlockOptions).AddLastBlock(Console.WriteLine, pipelineBlockOpts);
+
+var r = p.Build();
+await r.ExecuteAsync(MyAsyncEnumerable());
+
+static async IAsyncEnumerable<int> MyAsyncEnumerable()
+{
+    for (int i = 0; i < 50; i++)
+    {
+        await Task.Delay(50); // simulate some asynchronous work
+        yield return i;
+    }
+}
 
 static async Task FooAsync()
 {
-  var pipelineBlockOpts = new PipelineBlockOptions
+  var pipelineBlockOpts = new PipelineBlockOptions<ExecutionDataflowBlockOptions>
   {
     BlockOptions = new() { MaxDegreeOfParallelism = 1 },
     LinkOptions = new() { PropagateCompletion = true }
@@ -67,17 +102,19 @@ static async Task FooAsync()
     .AddFirstBlock(n => n)
     .AddLastBlock(n => Console.WriteLine($"Greater than 10 {n}"), pipelineBlockOpts);
 
-  // var branch1 = new Pipeline<int>("b-1");
-  //   branch1
-  //     .AddFirstBlock(number => number)
-  //     .Fork()
-  //       .Branch(n => n <= 10, branch4, pipelineBlockOpts.LinkOptions)
-  //       .Branch(n => n > 10, branch5, pipelineBlockOpts.LinkOptions)
-  //     ;
+  var branch1 = new Pipeline<int>("b-1");
+    branch1
+      .AddFirstBlock(number => number)
+      .AddBlock(number => number)
+      .Fork()
+        .Branch(n => n <= 10, branch4, pipelineBlockOpts.LinkOptions)
+        .Branch(n => n > 10, branch5, pipelineBlockOpts.LinkOptions)
+      ;
 
   var branch2 = new Pipeline<int>("b-2");
     branch2
       .AddFirstBlock(number => number)
+      .AddBlock(number => number.ToString())
       .AddLastBlock(n => Console.WriteLine($"Divisible by 5 {n}"), pipelineBlockOpts);
 
   var branch3 = new Pipeline<int>("b-3");
@@ -91,24 +128,31 @@ static async Task FooAsync()
     .AddAsyncBlock(async n =>
     {
       // Thread.Sleep(500);
-      await Task.Delay(100);
+      await Task.Delay(1000);
       return n;
     }, pipelineBlockOpts)
-    // .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
-    // .AddBlock(async number => number*number, pipelineBlockOpts, true)
+    .AddAsyncBlock(number => Task.FromResult(number), pipelineBlockOpts)
+    .AddBlock(number => number*number, pipelineBlockOpts, true)
     .AddBlock(number => number, pipelineBlockOpts)
-    .Broadcast(null, pipelineBlockOpts)
-      .Branch(branch2, pipelineBlockOpts.LinkOptions)
-      .Branch(branch3, pipelineBlockOpts.LinkOptions)
-      .Branch(branch4, pipelineBlockOpts.LinkOptions)
+    .AddManyBlock(number =>
+    {
+      return Enumerable.Range(0, number);
+    }, pipelineBlockOpts)
+    // .Broadcast(null, pipelineBlockOpts)
+    //   .Branch(branch2, pipelineBlockOpts.LinkOptions)
+    //   .Branch(branch3, pipelineBlockOpts.LinkOptions)
+    //   .Branch(branch4, pipelineBlockOpts.LinkOptions)
     // .AddLastAsyncBlock(async n => {}, pipelineBlockOpts)
-    // .AddLastBlock(n => { Console.WriteLine(n.Result); }, pipelineBlockOpts)
-    // .Fork()
-      // .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
-      // .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
-      // .Default(branch3, pipelineBlockOpts.LinkOptions);
+    // .AddLastBlock(Console.WriteLine, pipelineBlockOpts)
+    .Fork()
+      .Branch(n => n % 2 == 0, branch1, pipelineBlockOpts.LinkOptions)
+      .Branch(n => n % 5 == 0, branch2, pipelineBlockOpts.LinkOptions)
+      .Default(branch3, pipelineBlockOpts.LinkOptions);
     ;
 
-  var pipelineRunner = pipeline.Build();
-  await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
+  // var pipelineRunner = pipeline.Build();
+  // await pipelineRunner.ExecuteAsync(["1", "2", "3", "4", "5", "6"]);
+  var g = await pipeline.ExportAsync(new GraphvizExporter());
+  System.Console.WriteLine(g);
 }
+

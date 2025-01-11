@@ -5,9 +5,14 @@ namespace DataflowBuilder.Tests;
 
 public class PipelineRunnerTests
 {
-  private readonly PipelineBlockOptions _pipelineBlockOpts = new()
+  private static readonly PipelineBlockOptions<ExecutionDataflowBlockOptions> ExecutionBlockOpts = new()
   {
     BlockOptions = new() { MaxDegreeOfParallelism = 1 },
+    LinkOptions = new() { PropagateCompletion = true }
+  };
+
+  private static readonly PipelineBlockOptions<DataflowBlockOptions> DataflowBlockOpts = new()
+  {
     LinkOptions = new() { PropagateCompletion = true }
   };
 
@@ -53,7 +58,7 @@ public class PipelineRunnerTests
     var pipeline = new Pipeline<string>("test");
     pipeline
       .AddFirstBlock(int.Parse)
-      .AddLastBlock(results.Add, _pipelineBlockOpts);
+      .AddLastBlock(results.Add, ExecutionBlockOpts);
 
     // Act
     var pipelineRunner = pipeline.Build();
@@ -71,9 +76,9 @@ public class PipelineRunnerTests
     var pipeline = new Pipeline<string>("test");
     pipeline
       .AddFirstBlock(int.Parse)
-      .AddBlock(number => number * 2, _pipelineBlockOpts)
-      .AddManyBlock(number => Enumerable.Range(0, number), _pipelineBlockOpts)
-      .AddLastBlock(results.Add, _pipelineBlockOpts);
+      .AddBlock(number => number * 2, ExecutionBlockOpts)
+      .AddManyBlock(number => Enumerable.Range(0, number), ExecutionBlockOpts)
+      .AddLastBlock(results.Add, ExecutionBlockOpts);
 
     // Act
     var pipelineRunner = pipeline.Build();
@@ -91,13 +96,13 @@ public class PipelineRunnerTests
     var pipeline = new Pipeline<string>("test");
     pipeline
       .AddFirstBlock(int.Parse)
-      .AddBlock(number => number * 2, _pipelineBlockOpts)
+      .AddBlock(number => number * 2, ExecutionBlockOpts)
       .AddAsyncBlock(async number =>
       {
         await Task.Delay(100);
         return number + 1;
-      }, _pipelineBlockOpts)
-      .AddLastBlock(results.Add, _pipelineBlockOpts);
+      }, ExecutionBlockOpts)
+      .AddLastBlock(results.Add, ExecutionBlockOpts);
 
     // Act
     var pipelineRunner = pipeline.Build();
@@ -117,12 +122,12 @@ public class PipelineRunnerTests
     var evenPipeline = new Pipeline<int>("even");
     evenPipeline
       .AddFirstBlock(number => number)
-      .AddLastBlock(evenNumbers.Add, _pipelineBlockOpts);
+      .AddLastBlock(evenNumbers.Add, ExecutionBlockOpts);
 
     var oddPipeline = new Pipeline<int>("odd");
     oddPipeline
       .AddFirstBlock(number => number)
-      .AddLastBlock(oddNumbers.Add, _pipelineBlockOpts);
+      .AddLastBlock(oddNumbers.Add, ExecutionBlockOpts);
 
     var pipeline = new Pipeline<string>("test");
     pipeline
@@ -131,11 +136,11 @@ public class PipelineRunnerTests
       {
         await Task.Delay(100);
         return number;
-      }, _pipelineBlockOpts)
-      .AddBlock(number => number + 1, _pipelineBlockOpts)
+      }, ExecutionBlockOpts)
+      .AddBlock(number => number + 1, ExecutionBlockOpts)
       .Fork()
-        .Branch(number => number % 2 == 0, evenPipeline, _pipelineBlockOpts.LinkOptions)
-        .Default(oddPipeline, _pipelineBlockOpts.LinkOptions);
+        .Branch(number => number % 2 == 0, evenPipeline, ExecutionBlockOpts.LinkOptions)
+        .Default(oddPipeline, ExecutionBlockOpts.LinkOptions);
 
     // Act
     var pipelineRunner = pipeline.Build();
@@ -156,20 +161,20 @@ public class PipelineRunnerTests
     var branchPipeline1 = new Pipeline<int>("b1");
     branchPipeline1
       .AddFirstBlock(number => number)
-      .AddLastBlock(b1Results.Add, _pipelineBlockOpts);
+      .AddLastBlock(b1Results.Add, ExecutionBlockOpts);
 
     var branchPipeline2 = new Pipeline<int>("b2");
     branchPipeline2
       .AddFirstBlock(number => number)
-      .AddLastBlock(b2Results.Add, _pipelineBlockOpts);
+      .AddLastBlock(b2Results.Add, ExecutionBlockOpts);
 
     var pipeline = new Pipeline<string>("test");
     pipeline
       .AddFirstBlock(int.Parse)
-      .AddBlock(number => number + 1, _pipelineBlockOpts)
-      .Broadcast(null, _pipelineBlockOpts)
-        .Branch(branchPipeline1, _pipelineBlockOpts.LinkOptions)
-        .Branch(branchPipeline2, _pipelineBlockOpts.LinkOptions);
+      .AddBlock(number => number + 1, ExecutionBlockOpts)
+      .Broadcast(null, DataflowBlockOpts)
+        .Branch(branchPipeline1, ExecutionBlockOpts.LinkOptions)
+        .Branch(branchPipeline2, ExecutionBlockOpts.LinkOptions);
 
     // Act
     var pipelineRunner = pipeline.Build();
